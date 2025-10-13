@@ -3,11 +3,11 @@ from flask_cors import CORS
 from flask_restful import Api
 from dotenv import load_dotenv
 from server.extension import db, migrate, jwt,ma
-from server.routes_controller import register_routes
+# from server.routes_controller import register_routes
 import os
 from datetime import timedelta
 import logging
-from server.seed import seed
+# from server.seed import seed
 
 
 
@@ -56,7 +56,7 @@ def create_app():
 
 
     # Register routes
-    register_routes(app)
+    # register_routes(app)
 
     
  
