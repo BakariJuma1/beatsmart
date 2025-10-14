@@ -31,4 +31,5 @@ class BeatFileResource(Resource):
             return {"error": "You have not purchased this file"}, 403
 
         return jsonify({"file_url": beat_file.file_url})
+    
 api.add_resource(BeatFileResource, "/beats/<int:beat_id>/files/<string:file_type>")
