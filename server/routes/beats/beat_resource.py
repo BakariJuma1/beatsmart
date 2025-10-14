@@ -1,7 +1,9 @@
-from flask_restful import Resource,Api
+from flask_restful import Resource, Api
 from flask import request, jsonify
 from server.models.beat import Beat
 from server.models.beat_file import BeatFile
+from server.models.discount import Discount
+from server.models.contract_template import ContractTemplate
 from server.schemas.beat_schema import BeatSchema
 from server.extension import db
 from server.service.upload_service import upload_beat_file, upload_cover_image
@@ -17,7 +19,6 @@ beats_schema = BeatSchema(many=True)
 
 class BeatListResource(Resource):
     def get(self):
-    
         genre = request.args.get("genre")
         query = Beat.query
         if genre:
@@ -47,13 +48,12 @@ class BeatListResource(Resource):
 
     @firebase_auth_required
     def post(self):
-        
         user = request.current_user
 
         if not user.is_producer():
             return {"error": "Only producers can upload beats"}, 403
 
-     
+        # ----- Beat info -----
         title = request.form.get("title")
         genre = request.form.get("genre")
         bpm = request.form.get("bpm")
@@ -61,7 +61,8 @@ class BeatListResource(Resource):
         price = float(request.form.get("price", 0.0))
         description = request.form.get("description")
         preview_start = int(request.form.get("preview_start", 0))
-        
+
+        # ----- Files -----
         cover_file = request.files.get("cover")
         mp3_file = request.files.get("mp3")
         wav_file = request.files.get("wav")
@@ -70,17 +71,15 @@ class BeatListResource(Resource):
         if not title or not mp3_file:
             return {"error": "Title and MP3 file are required"}, 400
 
-      
         cover_url = upload_cover_image(cover_file)["url"] if cover_file else None
         mp3_url = upload_beat_file(mp3_file)["url"]
         wav_url = upload_beat_file(wav_file)["url"] if wav_file else None
         trackout_url = upload_beat_file(trackout_file)["url"] if trackout_file else None
 
-       
         preview_path = create_preview(mp3_file, start_time=preview_start)
         preview_url = upload_beat_file(open(preview_path, "rb"))["url"] if preview_path else None
 
-        # Create Beat
+        # ----- Create Beat -----
         beat = Beat(
             title=title,
             description=description,
@@ -95,20 +94,48 @@ class BeatListResource(Resource):
         db.session.add(beat)
         db.session.flush()
 
-       
+        # ----- Beat Files -----
         db.session.add(BeatFile(file_type="mp3", file_url=mp3_url, price=price, beat_id=beat.id))
         if wav_url:
             db.session.add(BeatFile(file_type="wav", file_url=wav_url, price=price*1.2, beat_id=beat.id))
         if trackout_url:
             db.session.add(BeatFile(file_type="trackout", file_url=trackout_url, price=price*1.5, beat_id=beat.id))
 
+        # ----- Optional Discount -----
+        discount_code = request.form.get("discount_code")
+        discount_percentage = request.form.get("discount_percentage")
+        if discount_code and discount_percentage:
+            discount = Discount(
+                code=discount_code,
+                percentage=float(discount_percentage),
+                applicable_to="beat",
+                item_id=beat.id,
+                is_active=True
+            )
+            db.session.add(discount)
+
+        # ----- Contract Templates for each file type -----
+        for file_type in ["mp3", "wav", "trackout"]:
+            contract_type = request.form.get(f"{file_type}_contract_type")
+            contract_terms = request.form.get(f"{file_type}_contract_terms")
+            contract_price = request.form.get(f"{file_type}_contract_price", 0.0)
+            if contract_type:
+                contract_template = ContractTemplate(
+                    beat_id=beat.id,
+                    file_type=file_type,
+                    contract_type=contract_type,
+                    terms=contract_terms,
+                    price=float(contract_price)
+                )
+                db.session.add(contract_template)
+
         db.session.commit()
+
         return beat_schema.dump(beat), 201
 
 
 class BeatResource(Resource):
     def get(self, beat_id):
-      
         beat = Beat.query.get_or_404(beat_id)
         safe_beat = {
             "id": beat.id,
@@ -122,13 +149,25 @@ class BeatResource(Resource):
             "producer": {
                 "id": beat.producer.id,
                 "name": beat.producer.name
-            }
+            },
+            # Include optional discount info
+            "discount": {
+                "code": beat.discounts[0].code if beat.discounts else None,
+                "percentage": beat.discounts[0].percentage if beat.discounts else None
+            },
+            # Include contract template summary
+            "contracts": [
+                {
+                    "file_type": c.file_type,
+                    "contract_type": c.contract_type,
+                    "price": c.price
+                } for c in beat.contract_templates
+            ]
         }
         return jsonify(safe_beat)
 
     @firebase_auth_required
     def put(self, beat_id):
-      
         user = request.current_user
         beat = Beat.query.get_or_404(beat_id)
 
@@ -142,7 +181,6 @@ class BeatResource(Resource):
         beat.price = float(request.form.get("price", beat.price))
         beat.description = request.form.get("description", beat.description)
 
-       
         cover_file = request.files.get("cover")
         mp3_file = request.files.get("mp3")
         wav_file = request.files.get("wav")
@@ -155,7 +193,6 @@ class BeatResource(Resource):
         if mp3_file:
             mp3_url = upload_beat_file(mp3_file)["url"]
             beat.preview_url = upload_beat_file(open(create_preview(mp3_file, preview_start), "rb"))["url"]
-           
             mp3_file_obj = BeatFile.query.filter_by(beat_id=beat.id, file_type="mp3").first()
             if mp3_file_obj:
                 mp3_file_obj.file_url = mp3_url
@@ -178,12 +215,51 @@ class BeatResource(Resource):
             else:
                 db.session.add(BeatFile(file_type="trackout", file_url=trackout_url, price=beat.price*1.5, beat_id=beat.id))
 
+        # Update discount if provided
+        discount_code = request.form.get("discount_code")
+        discount_percentage = request.form.get("discount_percentage")
+        if discount_code and discount_percentage:
+            if beat.discounts:
+                discount = beat.discounts[0]
+                discount.code = discount_code
+                discount.percentage = float(discount_percentage)
+            else:
+                discount = Discount(
+                    code=discount_code,
+                    percentage=float(discount_percentage),
+                    applicable_to="beat",
+                    item_id=beat.id,
+                    is_active=True
+                )
+                db.session.add(discount)
+
+        # Update contract templates if provided
+        for file_type in ["mp3", "wav", "trackout"]:
+            contract_type = request.form.get(f"{file_type}_contract_type")
+            contract_terms = request.form.get(f"{file_type}_contract_terms")
+            contract_price = request.form.get(f"{file_type}_contract_price", 0.0)
+
+            if contract_type:
+                contract_template = ContractTemplate.query.filter_by(beat_id=beat.id, file_type=file_type).first()
+                if contract_template:
+                    contract_template.contract_type = contract_type
+                    contract_template.terms = contract_terms
+                    contract_template.price = float(contract_price)
+                else:
+                    contract_template = ContractTemplate(
+                        beat_id=beat.id,
+                        file_type=file_type,
+                        contract_type=contract_type,
+                        terms=contract_terms,
+                        price=float(contract_price)
+                    )
+                    db.session.add(contract_template)
+
         db.session.commit()
         return beat_schema.dump(beat), 200
 
     @firebase_auth_required
     def delete(self, beat_id):
-       
         user = request.current_user
         beat = Beat.query.get_or_404(beat_id)
 
@@ -193,6 +269,7 @@ class BeatResource(Resource):
         db.session.delete(beat)
         db.session.commit()
         return {"message": "Beat deleted"}, 200
+
 
 api.add_resource(BeatListResource, "/beats")          
 api.add_resource(BeatResource, "/beats/<int:beat_id>")

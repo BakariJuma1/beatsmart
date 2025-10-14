@@ -3,6 +3,7 @@ from .beat import Beat
 from .beat_file import BeatFile
 from .soundpack import SoundPack
 from .contract import Contract
+from .contract_template import ContractTemplate
 from .sale import Sale
 from .payment import Payment
 from .wishlist import Wishlist

@@ -27,6 +27,7 @@ class Beat(db.Model):
     sales = db.relationship("Sale", back_populates="beat", lazy="dynamic")
     payments = db.relationship("Payment", back_populates="beat", lazy="dynamic")
     files = db.relationship("BeatFile", back_populates="beat", cascade="all, delete-orphan")
+    contract_templates = db.relationship("ContractTemplate", back_populates="beat")
 
 
     def __repr__(self):
