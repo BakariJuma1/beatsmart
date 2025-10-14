@@ -25,6 +25,8 @@ class Beat(db.Model):
     contracts = db.relationship("Contract", back_populates="beat", lazy="dynamic")
     wishlists = db.relationship("Wishlist", primaryjoin="and_(Wishlist.item_type=='beat', foreign(Wishlist.item_id)==Beat.id)", viewonly=True)
     sales = db.relationship("Sale", back_populates="beat", lazy="dynamic")
+    files = db.relationship("BeatFile", back_populates="beat", cascade="all, delete-orphan")
+
 
     def __repr__(self):
         return f"<Beat {self.title}>"
