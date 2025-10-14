@@ -4,6 +4,7 @@ from flask_restful import Api
 from dotenv import load_dotenv
 from server.extension import db, migrate, jwt,ma
 # from server.routes_controller import register_routes
+from server.firebase_init import auth
 import os
 from datetime import timedelta
 import logging

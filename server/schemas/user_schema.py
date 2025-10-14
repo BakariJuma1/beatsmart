@@ -1,4 +1,3 @@
-
 from server.extension import ma
 from marshmallow import fields, validate, post_load
 from server.models.user import User
@@ -15,6 +14,7 @@ class UserSchema(ma.SQLAlchemyAutoSchema):
 
     @post_load
     def make_user(self, data, **kwargs):
+        """Automatically hash password on load"""
         if "password" in data:
             pw = data.pop("password")
             user = User(**data)
