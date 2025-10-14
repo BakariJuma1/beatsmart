@@ -19,9 +19,10 @@ class Payment(db.Model):
 
     # relationships
     user = db.relationship("User", back_populates="payments")
-    beat = db.relationship("Beat", back_populates="sales", foreign_keys=[beat_id])
-    soundpack = db.relationship("SoundPack", back_populates="sales", foreign_keys=[soundpack_id])
-    contract = db.relationship("Contract", backref="payments", foreign_keys=[contract_id])
+    beat = db.relationship("Beat", back_populates="payments", foreign_keys=[beat_id])
+    contract = db.relationship("Contract", back_populates="payments", foreign_keys=[contract_id])
+
+    soundpack = db.relationship("SoundPack", back_populates="payments", foreign_keys=[soundpack_id])
 
     def __repr__(self):
         return f"<Payment {self.transaction_ref} - {self.amount}{self.currency}>"

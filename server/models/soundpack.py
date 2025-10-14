@@ -16,6 +16,8 @@ class SoundPack(db.Model):
     producer = db.relationship("User", back_populates="soundpacks")
     wishlists = db.relationship("Wishlist", primaryjoin="and_(Wishlist.item_type=='soundpack', foreign(Wishlist.item_id)==SoundPack.id)", viewonly=True)
     sales = db.relationship("Sale", back_populates="soundpack", lazy="dynamic")
+   
+    payments = db.relationship("Payment", back_populates="soundpack", lazy="dynamic")
 
     def __repr__(self):
         return f"<SoundPack {self.name}>"

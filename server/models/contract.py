@@ -20,6 +20,6 @@ class Contract(db.Model):
     beat = db.relationship("Beat", back_populates="contracts")
     buyer = db.relationship("User", back_populates="contracts")
     sale = db.relationship("Sale", back_populates="contract", uselist=False)
-
+    payments = db.relationship("Payment", back_populates="contract", lazy="dynamic")
     def __repr__(self):
         return f"<Contract {self.contract_type} - Beat {self.beat_id} -> Buyer {self.buyer_id}>"
