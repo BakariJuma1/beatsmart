@@ -3,7 +3,7 @@ from flask_cors import CORS
 from flask_restful import Api
 from dotenv import load_dotenv
 from server.extension import db, migrate, jwt,ma
-# from server.routes_controller import register_routes
+from server.route_controller import register_routes
 from server.firebase_init import auth
 import os
 from datetime import timedelta
@@ -56,8 +56,8 @@ def create_app():
     #     seed()
 
 
-    # Register routes
-    # register_routes(app)
+   
+    register_routes(app)
 
     
  

@@ -1,4 +1,4 @@
-
+from server.routes.auth import auth_bp
 
 def register_routes(app):
-    pass
+    app.register_blueprint(auth_bp)
