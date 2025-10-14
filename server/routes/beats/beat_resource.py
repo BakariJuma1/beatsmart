@@ -1,0 +1,198 @@
+from flask_restful import Resource,Api
+from flask import request, jsonify
+from server.models.beat import Beat
+from server.models.beat_file import BeatFile
+from server.schemas.beat_schema import BeatSchema
+from server.extension import db
+from server.service.upload_service import upload_beat_file, upload_cover_image
+from server.utils.audio_utils import create_preview
+from server.utils.firebase_auth import firebase_auth_required
+from . import beat_resource_bp
+
+api = Api(beat_resource_bp)
+
+beat_schema = BeatSchema()
+beats_schema = BeatSchema(many=True)
+
+
+class BeatListResource(Resource):
+    def get(self):
+    
+        genre = request.args.get("genre")
+        query = Beat.query
+        if genre:
+            query = query.filter_by(genre=genre)
+        beats = query.order_by(Beat.created_at.desc()).all()
+
+        # Strip sensitive info (full file URLs) for public
+        safe_beats = []
+        for beat in beats:
+            safe_beat = {
+                "id": beat.id,
+                "title": beat.title,
+                "genre": beat.genre,
+                "bpm": beat.bpm,
+                "key": beat.key,
+                "cover_url": beat.cover_url,
+                "preview_url": beat.preview_url,
+                "price": beat.price,
+                "producer": {
+                    "id": beat.producer.id,
+                    "name": beat.producer.name
+                }
+            }
+            safe_beats.append(safe_beat)
+
+        return jsonify(safe_beats)
+
+    @firebase_auth_required
+    def post(self):
+        
+        user = request.current_user
+
+        if not user.is_producer():
+            return {"error": "Only producers can upload beats"}, 403
+
+     
+        title = request.form.get("title")
+        genre = request.form.get("genre")
+        bpm = request.form.get("bpm")
+        key = request.form.get("key")
+        price = float(request.form.get("price", 0.0))
+        description = request.form.get("description")
+        preview_start = int(request.form.get("preview_start", 0))
+        
+        cover_file = request.files.get("cover")
+        mp3_file = request.files.get("mp3")
+        wav_file = request.files.get("wav")
+        trackout_file = request.files.get("trackout")
+
+        if not title or not mp3_file:
+            return {"error": "Title and MP3 file are required"}, 400
+
+      
+        cover_url = upload_cover_image(cover_file)["url"] if cover_file else None
+        mp3_url = upload_beat_file(mp3_file)["url"]
+        wav_url = upload_beat_file(wav_file)["url"] if wav_file else None
+        trackout_url = upload_beat_file(trackout_file)["url"] if trackout_file else None
+
+       
+        preview_path = create_preview(mp3_file, start_time=preview_start)
+        preview_url = upload_beat_file(open(preview_path, "rb"))["url"] if preview_path else None
+
+        # Create Beat
+        beat = Beat(
+            title=title,
+            description=description,
+            genre=genre,
+            bpm=bpm,
+            key=key,
+            price=price,
+            cover_url=cover_url,
+            preview_url=preview_url,
+            producer_id=user.id
+        )
+        db.session.add(beat)
+        db.session.flush()
+
+       
+        db.session.add(BeatFile(file_type="mp3", file_url=mp3_url, price=price, beat_id=beat.id))
+        if wav_url:
+            db.session.add(BeatFile(file_type="wav", file_url=wav_url, price=price*1.2, beat_id=beat.id))
+        if trackout_url:
+            db.session.add(BeatFile(file_type="trackout", file_url=trackout_url, price=price*1.5, beat_id=beat.id))
+
+        db.session.commit()
+        return beat_schema.dump(beat), 201
+
+
+class BeatResource(Resource):
+    def get(self, beat_id):
+      
+        beat = Beat.query.get_or_404(beat_id)
+        safe_beat = {
+            "id": beat.id,
+            "title": beat.title,
+            "genre": beat.genre,
+            "bpm": beat.bpm,
+            "key": beat.key,
+            "cover_url": beat.cover_url,
+            "preview_url": beat.preview_url,
+            "price": beat.price,
+            "producer": {
+                "id": beat.producer.id,
+                "name": beat.producer.name
+            }
+        }
+        return jsonify(safe_beat)
+
+    @firebase_auth_required
+    def put(self, beat_id):
+      
+        user = request.current_user
+        beat = Beat.query.get_or_404(beat_id)
+
+        if beat.producer_id != user.id:
+            return {"error": "Unauthorized"}, 403
+
+        beat.title = request.form.get("title", beat.title)
+        beat.genre = request.form.get("genre", beat.genre)
+        beat.bpm = request.form.get("bpm", beat.bpm)
+        beat.key = request.form.get("key", beat.key)
+        beat.price = float(request.form.get("price", beat.price))
+        beat.description = request.form.get("description", beat.description)
+
+       
+        cover_file = request.files.get("cover")
+        mp3_file = request.files.get("mp3")
+        wav_file = request.files.get("wav")
+        trackout_file = request.files.get("trackout")
+        preview_start = int(request.form.get("preview_start", 0))
+
+        if cover_file:
+            beat.cover_url = upload_cover_image(cover_file)["url"]
+
+        if mp3_file:
+            mp3_url = upload_beat_file(mp3_file)["url"]
+            beat.preview_url = upload_beat_file(open(create_preview(mp3_file, preview_start), "rb"))["url"]
+           
+            mp3_file_obj = BeatFile.query.filter_by(beat_id=beat.id, file_type="mp3").first()
+            if mp3_file_obj:
+                mp3_file_obj.file_url = mp3_url
+            else:
+                db.session.add(BeatFile(file_type="mp3", file_url=mp3_url, price=beat.price, beat_id=beat.id))
+
+        if wav_file:
+            wav_url = upload_beat_file(wav_file)["url"]
+            wav_file_obj = BeatFile.query.filter_by(beat_id=beat.id, file_type="wav").first()
+            if wav_file_obj:
+                wav_file_obj.file_url = wav_url
+            else:
+                db.session.add(BeatFile(file_type="wav", file_url=wav_url, price=beat.price*1.2, beat_id=beat.id))
+
+        if trackout_file:
+            trackout_url = upload_beat_file(trackout_file)["url"]
+            trackout_file_obj = BeatFile.query.filter_by(beat_id=beat.id, file_type="trackout").first()
+            if trackout_file_obj:
+                trackout_file_obj.file_url = trackout_url
+            else:
+                db.session.add(BeatFile(file_type="trackout", file_url=trackout_url, price=beat.price*1.5, beat_id=beat.id))
+
+        db.session.commit()
+        return beat_schema.dump(beat), 200
+
+    @firebase_auth_required
+    def delete(self, beat_id):
+       
+        user = request.current_user
+        beat = Beat.query.get_or_404(beat_id)
+
+        if beat.producer_id != user.id:
+            return {"error": "Unauthorized"}, 403
+
+        db.session.delete(beat)
+        db.session.commit()
+        return {"message": "Beat deleted"}, 200
+
+api.add_resource(BeatListResource, "/beats")          
+api.add_resource(BeatResource, "/beats/<int:beat_id>")
