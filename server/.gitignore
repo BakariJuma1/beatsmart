@@ -1,2 +1,16 @@
-serviceAccountKey.json
 .env
+.env.local
+.env.production
+.env.development
+
+
+serviceAccountKey.json
+serviceAccountKey*.json
+
+
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+.env/
