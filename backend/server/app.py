@@ -71,6 +71,9 @@ def create_app():
     def home():
         return {"message": "Welcome to beatsmart API"}
     
- 
+    @app.route('/favicon.ico')
+    def favicon():
+        return '', 204  
+
     
     return app
