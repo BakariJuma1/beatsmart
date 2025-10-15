@@ -25,9 +25,10 @@ class PaystackWebhookResource(Resource):
         computed = hmac.new(PAYSTACK_SECRET_KEY.encode(), body, hashlib.sha512).hexdigest()
 
         if not signature or signature != computed:
-            current_app.logger.warning("Invalid Paystack signature")
+            current_app.logger.warning("⚠️ Invalid Paystack signature")
             return {"error": "Invalid signature"}, 400
 
+     
         event = request.get_json(force=True)
         event_type = event.get("event")
         data = event.get("data", {})
@@ -36,7 +37,7 @@ class PaystackWebhookResource(Resource):
         status = data.get("status")
         metadata = data.get("metadata", {}) or {}
 
-       
+        
         payment = None
         try:
             pid = metadata.get("payment_id")
@@ -49,68 +50,85 @@ class PaystackWebhookResource(Resource):
             payment = Payment.query.filter_by(transaction_ref=ref).first()
 
         if not payment:
-            current_app.logger.warning("Payment not found for reference %s", ref)
+            current_app.logger.warning(f"Payment not found for reference {ref}")
             return {"ok": True}, 200
 
+       
         if payment.status == "success":
+            current_app.logger.info(f"Payment {ref} already processed")
             return {"ok": True}, 200
 
+     
         if status in ("success", "successful"):
-            payment.status = "success"
-            db.session.add(payment)
-
-            existing_sale = Sale.query.filter_by(
-                buyer_id=payment.user_id,
-                beat_id=payment.beat_id,
-                soundpack_id=payment.soundpack_id,
-                amount=payment.amount
-            ).first()
-
-            if not existing_sale:
-                sale = Sale(
-                    buyer_id=payment.user_id,
-                    beat_id=payment.beat_id,
-                    soundpack_id=payment.soundpack_id,
-                    amount=payment.amount
-                )
-                if payment.discount_id:
-                    sale.discount_id = payment.discount_id
-
-                db.session.add(sale)
-                db.session.flush()
+            try:
+                payment.status = "success"
+                db.session.add(payment)
 
                 
-                if payment.beat_id:
-                    file_type = metadata.get("file_type")
-                    template = ContractTemplate.query.filter_by(
-                        beat_id=payment.beat_id, file_type=file_type
-                    ).first()
-                    if template:
-                        contract_url = generate_contract_pdf(
-                            template,
-                            sale.buyer,
-                            Beat.query.get(payment.beat_id),
-                            file_type
-                        )
-                        contract = Contract(
-                            buyer_id=payment.user_id,
-                            beat_id=payment.beat_id,
-                            file_type=file_type,
-                            contract_type=template.contract_type,
-                            terms=template.terms,
-                            price=payment.amount,
-                            contract_url=contract_url
-                        )
-                        db.session.add(contract)
-                        # Link sale to contract
-                        sale.contract = contract
+                existing_sale = Sale.query.filter_by(
+                    buyer_id=payment.user_id,
+                    beat_id=payment.beat_id,
+                    soundpack_id=payment.soundpack_id
+                ).first()
 
-            db.session.commit()
-            return {"ok": True}, 200
+                if not existing_sale:
+                    sale = Sale(
+                        buyer_id=payment.user_id,
+                        beat_id=payment.beat_id,
+                        soundpack_id=payment.soundpack_id,
+                        amount=payment.amount,
+                        discount_id=payment.discount_id
+                    )
+                    db.session.add(sale)
+                    db.session.flush()
+
+                   
+                    if payment.beat_id:
+                        beat = Beat.query.get(payment.beat_id)
+                        if beat:
+                            sale.producer_id = beat.producer_id  
+
+                           
+                            file_type = metadata.get("file_type")
+                            template = ContractTemplate.query.filter_by(
+                                beat_id=payment.beat_id, file_type=file_type
+                            ).first()
+
+                            if template:
+                                contract_url = generate_contract_pdf(
+                                    template,
+                                    sale.buyer,
+                                    beat,
+                                    file_type
+                                )
+
+                                contract = Contract(
+                                    buyer_id=payment.user_id,
+                                    beat_id=payment.beat_id,
+                                    file_type=file_type,
+                                    contract_type=template.contract_type,
+                                    terms=template.terms,
+                                    price=payment.amount,
+                                    contract_url=contract_url
+                                )
+
+                                db.session.add(contract)
+                                sale.contract = contract  
+
+                db.session.commit()
+                current_app.logger.info(f"✅ Payment {ref} processed successfully")
+                return {"ok": True}, 200
+
+            except Exception as e:
+                db.session.rollback()
+                current_app.logger.error(f"Error processing webhook: {e}")
+                return {"error": "Server error"}, 500
 
         else:
+           
             payment.status = "failed"
             db.session.commit()
+            current_app.logger.info(f"Payment {ref} failed")
             return {"ok": True}, 200
 
 

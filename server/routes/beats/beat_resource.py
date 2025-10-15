@@ -10,7 +10,9 @@ from server.extension import db
 from server.service.upload_service import upload_beat_file, upload_cover_image
 from server.utils.audio_utils import create_preview
 from server.utils.firebase_auth import firebase_auth_required
+from server.utils.role import role_required ,ROLES
 from . import beat_resource_bp
+
 
 api = Api(beat_resource_bp)
 
@@ -19,6 +21,7 @@ beats_schema = BeatSchema(many=True)
 
 
 class BeatListResource(Resource):
+    """Handles beat listing (public) and upload (restricted to producers)."""
     def get(self):
         genre = request.args.get("genre")
         query = Beat.query
@@ -47,6 +50,7 @@ class BeatListResource(Resource):
         return jsonify(safe_beats)
 
     @firebase_auth_required
+    @role_required(ROLES["ADMIN"])
     def post(self):
         user = request.current_user
         if not user.is_producer():
@@ -61,7 +65,6 @@ class BeatListResource(Resource):
         except ValidationError as err:
             return {"errors": err.messages}, 400
 
-        # ----- Files -----
         cover_file = request.files.get("cover")
         mp3_file = request.files.get("mp3")
         wav_file = request.files.get("wav")
@@ -157,6 +160,7 @@ class BeatResource(Resource):
         return jsonify(safe_beat)
 
     @firebase_auth_required
+    @role_required(ROLES["ADMIN"])
     def put(self, beat_id):
         user = request.current_user
         beat = Beat.query.get_or_404(beat_id)
@@ -256,6 +260,7 @@ class BeatResource(Resource):
         return beat_schema.dump(beat), 200
 
     @firebase_auth_required
+    @role_required(ROLES["ADMIN"])
     def delete(self, beat_id):
         user = request.current_user
         beat = Beat.query.get_or_404(beat_id)
