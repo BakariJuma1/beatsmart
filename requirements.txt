@@ -39,3 +39,4 @@ reportlab==4.4.3
 
 # --- Production server ---
 gunicorn==23.0.0
+ffmpeg-python
