@@ -1,0 +1,42 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+flask = "==3.0.3"
+flask-cors = "==5.0.0"
+flask-jwt-extended = "==4.6.0"
+flask-migrate = "==4.1.0"
+flask-restful = "==0.3.10"
+flask-sqlalchemy = "==3.1.1"
+flask-bcrypt = "==1.0.1"
+flask-marshmallow = "==1.2.1"
+marshmallow = "==3.22.0"
+marshmallow-sqlalchemy = "==1.1.1"
+sqlalchemy = "==2.0.41"
+sqlalchemy-serializer = "==1.4.12"
+psycopg2-binary = "==2.9.10"
+alembic = "==1.14.1"
+firebase-admin = "==6.9.0"
+google-cloud-firestore = "==2.21.0"
+google-cloud-storage = "==3.4.1"
+google-auth = "==2.41.1"
+python-dotenv = "==1.0.1"
+python-decouple = "==3.8"
+requests = "==2.31.0"
+cloudinary = "==1.44.1"
+resend = "==0.6.0"
+sib-api-v3-sdk = "==7.6.0"
+pyjwt = "==2.9.0"
+pillow = "==10.4.0"
+pypdf2 = "==3.0.1"
+pydub = "==0.25.1"
+reportlab = "==4.4.3"
+ffmpeg-python = "*"
+gunicorn = "==23.0.0"
+
+[dev-packages]
+
+[requires]
+python_version = "3.8"
