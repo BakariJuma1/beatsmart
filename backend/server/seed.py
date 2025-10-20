@@ -1,7 +1,7 @@
 # seed.py
 from datetime import datetime
 from server.extension import db
-from app.models import User, Beat, BeatFile, ContractTemplate, Wishlist, SoundPack
+from server.models import User, Beat, BeatFile, ContractTemplate, Wishlist, SoundPack
 
 # Clear existing data (optional, be careful in production)
 def clear_db():
