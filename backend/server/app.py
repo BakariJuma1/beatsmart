@@ -8,7 +8,7 @@ from server.firebase_init import auth
 import os
 from datetime import timedelta
 import logging
-from server.seed import seed
+# from server.seed import seed
 
 
 
@@ -50,10 +50,10 @@ def create_app():
     ma.init_app(app)
     
 
-    with app.app_context():
-        from flask_migrate import upgrade
-        upgrade()
-        seed()
+    # with app.app_context():
+    #     from flask_migrate import upgrade
+    #     upgrade()
+    #     seed()
 
 
    
