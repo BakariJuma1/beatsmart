@@ -8,6 +8,7 @@ from . import auth_bp
 
 api = Api(auth_bp)
 
+
 class SessionResource(Resource):
     def post(self):
         data = request.get_json()
@@ -21,7 +22,6 @@ class SessionResource(Resource):
             email = decoded_token.get("email")
             name = decoded_token.get("name", "Unnamed User")
 
-           
             user = User.query.filter_by(email=email).first()
             if not user:
                 user = User(name=name, email=email, role="buyer")
@@ -32,19 +32,22 @@ class SessionResource(Resource):
             if not session_cookie:
                 return {"error": "Failed to create session cookie"}, 500
 
-            resp = make_response({"message": "Session created"})
+           
+            resp = make_response(jsonify({"message": "Session created"}))
             resp.set_cookie(
                 "session",
                 session_cookie,
-                max_age=60 * 60 * 24 * 5,
+                max_age=60 * 60 * 24 * 5, 
                 httponly=True,
-                secure=True,      
+                secure=True,  
                 samesite="Lax"
             )
-            return resp, 200
+
+            return resp
 
         except Exception as e:
-            print(e)
+            print("Error verifying ID token:", e)
             return {"error": "Invalid ID token"}, 401
+
 
 api.add_resource(SessionResource, "/auth/session")
