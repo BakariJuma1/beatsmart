@@ -3,6 +3,17 @@ from flask import request, jsonify
 from firebase_admin import auth
 from server.models.user import User
 from server.extension import db
+import datetime
+
+
+def create_session_cookie(id_token, expires_in=60 * 60 * 24 * 5): 
+    try:
+        session_cookie = auth.create_session_cookie(id_token, expires_in=expires_in)
+        return session_cookie
+    except Exception as e:
+        print("Error creating session cookie:", e)
+        return None
+
 
 def firebase_auth_required(f):
     @wraps(f)
@@ -15,13 +26,11 @@ def firebase_auth_required(f):
         id_token = auth_header.split("Bearer ")[1]
 
         try:
-            
             decoded_token = auth.verify_id_token(id_token)
             uid = decoded_token["uid"]
             email = decoded_token.get("email")
             name = decoded_token.get("name", "Unnamed User")
 
-            # Find or create user in database
             user = User.query.filter_by(email=email).first()
             if not user:
                 user = User(
@@ -32,9 +41,7 @@ def firebase_auth_required(f):
                 db.session.add(user)
                 db.session.commit()
 
-          
             request.current_user = user
-
             return f(*args, **kwargs)
 
         except Exception as e:
