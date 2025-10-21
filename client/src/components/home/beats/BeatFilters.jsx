@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { Search, Filter, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { GENRES, SORT_OPTIONS } from "../../constants";
+import { GENRES, SORT_OPTIONS } from "../../../constants";
 
 export const BeatFilters = ({
   searchTerm,
@@ -18,7 +18,7 @@ export const BeatFilters = ({
   setShowFilters,
   clearFilters,
   filteredBeats,
-  beats
+  beats,
 }) => {
   return (
     <section className="py-8 bg-gray-900/50">
@@ -54,7 +54,7 @@ export const BeatFilters = ({
             onChange={(e) => setSortBy(e.target.value)}
             className="bg-gray-800 border border-red-700/30 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-red-500"
           >
-            {SORT_OPTIONS.map(option => (
+            {SORT_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
@@ -73,14 +73,18 @@ export const BeatFilters = ({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* Genre Filter */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Genre</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Genre
+                </label>
                 <select
                   value={selectedGenre}
                   onChange={(e) => setSelectedGenre(e.target.value)}
                   className="w-full bg-gray-700 border border-red-700/30 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-red-500"
                 >
-                  {GENRES.map(genre => (
-                    <option key={genre} value={genre}>{genre}</option>
+                  {GENRES.map((genre) => (
+                    <option key={genre} value={genre}>
+                      {genre}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -96,7 +100,9 @@ export const BeatFilters = ({
                     min="0"
                     max="500"
                     value={priceRange[0]}
-                    onChange={(e) => setPriceRange([parseInt(e.target.value), priceRange[1]])}
+                    onChange={(e) =>
+                      setPriceRange([parseInt(e.target.value), priceRange[1]])
+                    }
                     className="w-full"
                   />
                   <input
@@ -104,7 +110,9 @@ export const BeatFilters = ({
                     min="0"
                     max="500"
                     value={priceRange[1]}
-                    onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value)])}
+                    onChange={(e) =>
+                      setPriceRange([priceRange[0], parseInt(e.target.value)])
+                    }
                     className="w-full"
                   />
                 </div>
@@ -121,7 +129,9 @@ export const BeatFilters = ({
                     min="60"
                     max="180"
                     value={bpmRange[0]}
-                    onChange={(e) => setBpmRange([parseInt(e.target.value), bpmRange[1]])}
+                    onChange={(e) =>
+                      setBpmRange([parseInt(e.target.value), bpmRange[1]])
+                    }
                     className="w-full"
                   />
                   <input
@@ -129,7 +139,9 @@ export const BeatFilters = ({
                     min="60"
                     max="180"
                     value={bpmRange[1]}
-                    onChange={(e) => setBpmRange([bpmRange[0], parseInt(e.target.value)])}
+                    onChange={(e) =>
+                      setBpmRange([bpmRange[0], parseInt(e.target.value)])
+                    }
                     className="w-full"
                   />
                 </div>

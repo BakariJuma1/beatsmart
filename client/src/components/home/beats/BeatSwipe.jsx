@@ -16,7 +16,7 @@ export const BeatSwipe = ({
   onPurchase,
   onDragEnd,
   loading,
-  user
+  user,
 }) => {
   if (loading) {
     return (
@@ -31,7 +31,9 @@ export const BeatSwipe = ({
       <div className="text-center py-12 bg-gray-900 rounded-3xl border border-red-700">
         <Music className="w-16 h-16 text-gray-600 mx-auto mb-4" />
         <h3 className="text-xl text-gray-400 mb-2">No beats found</h3>
-        <p className="text-gray-500 mb-4">Try adjusting your search or filters</p>
+        <p className="text-gray-500 mb-4">
+          Try adjusting your search or filters
+        </p>
       </div>
     );
   }
@@ -62,7 +64,7 @@ export const BeatSwipe = ({
             {currentBeatIndex + 1} of {sortedBeats.length}
           </span>
         </div>
-        
+
         {/* Enhanced Swipe Instructions */}
         <div className="flex items-center justify-center gap-6 text-sm text-gray-500">
           <div className="flex items-center gap-2">
@@ -74,7 +76,7 @@ export const BeatSwipe = ({
             <span>Swipe right to buy {!user && "(login required)"}</span>
           </div>
         </div>
-        
+
         {/* Keyboard Shortcuts Hint */}
         <div className="mt-4 text-xs text-gray-600">
           <span>Pro tip: Use ← → arrow keys to swipe • Spacebar to play</span>

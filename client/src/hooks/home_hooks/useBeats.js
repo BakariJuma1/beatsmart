@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { API_BASE_URL } from "../constants";
+import { API_BASE_URL } from "../../constants";
 
 export const useBeats = () => {
   const [beats, setBeats] = useState([]);
@@ -11,29 +11,32 @@ export const useBeats = () => {
       try {
         setLoading(true);
         setError(null);
-        
+
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
-        
+
         const response = await fetch(`${API_BASE_URL}/beats`, {
           signal: controller.signal,
-          headers: { 'Content-Type': 'application/json' }
+          headers: { "Content-Type": "application/json" },
         });
-        
+
         clearTimeout(timeoutId);
-        
-        if (!response.ok) throw new Error(`Failed to fetch beats: ${response.status}`);
-        
+
+        if (!response.ok)
+          throw new Error(`Failed to fetch beats: ${response.status}`);
+
         const data = await response.json();
-        setBeats(data.map(beat => ({ 
-          ...beat, 
-          isPlaying: false,
-          popularity: beat.popularity || 0,
-          plays: beat.plays || 0,
-          rating: beat.rating || "4.8"
-        })));
+        setBeats(
+          data.map((beat) => ({
+            ...beat,
+            isPlaying: false,
+            popularity: beat.popularity || 0,
+            plays: beat.plays || 0,
+            rating: beat.rating || "4.8",
+          }))
+        );
       } catch (err) {
-        setError(err.name === 'AbortError' ? 'Request timeout' : err.message);
+        setError(err.name === "AbortError" ? "Request timeout" : err.message);
       } finally {
         setLoading(false);
       }

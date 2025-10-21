@@ -21,6 +21,8 @@ export const AuthProvider = ({ children }) => {
 
   // Helper function to map Firebase errors to friendly messages
   const getFriendlyMessage = (error) => {
+    console.log("Firebase error code:", error.code); // Debug log
+    
     switch (error.code) {
       case "auth/email-already-in-use":
         return "This email is already registered. Try logging in.";
@@ -30,10 +32,14 @@ export const AuthProvider = ({ children }) => {
         return "No account found with this email.";
       case "auth/wrong-password":
         return "Incorrect password. Please try again.";
+      case "auth/invalid-credential":
+        return "Invalid email or password. Please check your credentials.";
       case "auth/popup-closed-by-user":
         return "The login popup was closed before completing login.";
       case "auth/too-many-requests":
         return "Too many attempts. Please try again later.";
+      case "auth/network-request-failed":
+        return "Network error. Please check your connection.";
       default:
         return error.message || "An unexpected error occurred. Please try again.";
     }
@@ -71,8 +77,7 @@ export const AuthProvider = ({ children }) => {
         password
       );
       const firebaseUser = userCredential.user;
-
-      // Update display name
+    
       await updateProfile(firebaseUser, { displayName: fullName });
 
       await fetchUserData(firebaseUser);
@@ -80,7 +85,7 @@ export const AuthProvider = ({ children }) => {
       return { success: true, user: firebaseUser };
     } catch (error) {
       console.error("Signup failed:", error);
-      return { success: false, message: getFriendlyMessage(error) };
+      throw new Error(getFriendlyMessage(error));
     }
   };
 
@@ -97,7 +102,7 @@ export const AuthProvider = ({ children }) => {
       return { success: true, user: firebaseUser };
     } catch (error) {
       console.error("Login failed:", error);
-      return { success: false, message: getFriendlyMessage(error) };
+      throw new Error(getFriendlyMessage(error));
     }
   };
 
@@ -111,7 +116,7 @@ export const AuthProvider = ({ children }) => {
       return { success: true, user: firebaseUser };
     } catch (error) {
       console.error("Google login failed:", error);
-      return { success: false, message: getFriendlyMessage(error) };
+      throw new Error(getFriendlyMessage(error));
     }
   };
 
@@ -128,7 +133,7 @@ export const AuthProvider = ({ children }) => {
       return { success: true };
     } catch (error) {
       console.error("Logout failed:", error);
-      return { success: false, message: getFriendlyMessage(error) };
+      throw new Error("Logout failed. Please try again.");
     }
   };
 
@@ -143,7 +148,8 @@ export const AuthProvider = ({ children }) => {
       };
     } catch (error) {
       console.error("Password reset failed:", error);
-      return { success: false, message: getFriendlyMessage(error) };
+   
+      throw new Error(getFriendlyMessage(error));
     }
   };
 
