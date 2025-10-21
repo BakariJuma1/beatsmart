@@ -34,7 +34,8 @@ Pillow==10.4.0
 PyPDF2==3.0.1
 pydub==0.25.1
 reportlab==4.4.3
-fpdf==2.7.1
+fpdf2==2.7.1
+
 
 ffmpeg-python
 

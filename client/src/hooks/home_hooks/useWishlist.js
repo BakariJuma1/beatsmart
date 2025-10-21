@@ -42,7 +42,7 @@ export const useWishlist = () => {
 
     try {
       const token = await getToken();
-      console.log("Fetching wishlist with token:", token); // Debug log
+     
 
       const response = await fetch(`${API_BASE_URL}/wishlist`, {
         headers: {
@@ -56,7 +56,7 @@ export const useWishlist = () => {
       }
 
       const result = await response.json();
-      console.log("Wishlist API response:", result); // Debug log
+     
 
       if (result.data) {
         setWishlistItems(result.data);
@@ -163,7 +163,7 @@ export const useWishlist = () => {
         );
 
         const result = await response.json();
-        console.log("Remove from wishlist response:", result);
+        
 
         if (!response.ok) {
           throw new Error(result.error || "Failed to remove from wishlist");
