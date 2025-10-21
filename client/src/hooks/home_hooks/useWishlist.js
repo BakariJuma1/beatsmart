@@ -9,14 +9,14 @@ export const useWishlist = () => {
   const [wishlistItems, setWishlistItems] = useState([]);
   const { user, loading: authLoading } = useAuth();
 
-  // Helper function to get Firebase token
+ 
   const getToken = useCallback(async () => {
     if (!user) {
       throw new Error("No user logged in");
     }
 
     try {
-      // Get the current Firebase user and their token
+      
       const currentUser = auth.currentUser;
       if (!currentUser) {
         throw new Error("No Firebase user found");
@@ -65,7 +65,7 @@ export const useWishlist = () => {
           .map((item) => item.item_id);
         setWishlist(beatIds);
       } else {
-        // Handle case where backend returns different structure
+      
         setWishlistItems(result);
         const beatIds = result
           .filter((item) => item.item_type === "beat")
@@ -74,7 +74,7 @@ export const useWishlist = () => {
       }
     } catch (error) {
       console.error("Error fetching wishlist:", error);
-      // Don't alert here to avoid spam on page load
+    
     }
   }, [user, getToken]);
 
@@ -94,7 +94,7 @@ export const useWishlist = () => {
       try {
         setWishlistLoading((prev) => ({ ...prev, [beat.id]: true }));
         const token = await getToken();
-        console.log("Adding to wishlist with token:", token); // Debug log
+       
 
         const response = await fetch(`${API_BASE_URL}/wishlist`, {
           method: "POST",
@@ -109,18 +109,17 @@ export const useWishlist = () => {
         });
 
         const result = await response.json();
-        console.log("Add to wishlist response:", result); // Debug log
+       
 
         if (!response.ok) {
           throw new Error(result.error || "Failed to add to wishlist");
         }
 
-        // Update local state
         if (result.data) {
           setWishlist((prev) => [...prev, beat.id]);
           setWishlistItems((prev) => [...prev, result.data]);
         } else if (result.message === "Item already in wishlist") {
-          // Item already exists, just refresh the list
+        
           await fetchWishlist();
         }
 
@@ -143,9 +142,8 @@ export const useWishlist = () => {
       try {
         setWishlistLoading((prev) => ({ ...prev, [beatId]: true }));
         const token = await getToken();
-        console.log("Removing from wishlist with token:", token); // Debug log
 
-        // Find the wishlist item ID for this beat
+   
         const wishlistItem = wishlistItems.find(
           (item) => item.item_type === "beat" && item.item_id === beatId
         );
@@ -165,13 +163,13 @@ export const useWishlist = () => {
         );
 
         const result = await response.json();
-        console.log("Remove from wishlist response:", result); // Debug log
+        console.log("Remove from wishlist response:", result);
 
         if (!response.ok) {
           throw new Error(result.error || "Failed to remove from wishlist");
         }
 
-        // Update local state
+      
         setWishlist((prev) => prev.filter((id) => id !== beatId));
         setWishlistItems((prev) =>
           prev.filter(
@@ -198,9 +196,9 @@ export const useWishlist = () => {
 
     try {
       const token = await getToken();
-      console.log("Clearing wishlist with token:", token); // Debug log
+      
 
-      // Get all wishlist items first
+   
       const response = await fetch(`${API_BASE_URL}/wishlist`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -213,7 +211,7 @@ export const useWishlist = () => {
 
       if (!itemsToDelete || itemsToDelete.length === 0) return true;
 
-      // Delete all wishlist items
+   
       const deletePromises = itemsToDelete.map((item) =>
         fetch(`${API_BASE_URL}/wishlist/${item.id}`, {
           method: "DELETE",
@@ -223,7 +221,7 @@ export const useWishlist = () => {
 
       await Promise.all(deletePromises);
 
-      // Clear local state
+  
       setWishlist([]);
       setWishlistItems([]);
 
