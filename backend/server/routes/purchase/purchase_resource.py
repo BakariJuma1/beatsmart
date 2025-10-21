@@ -10,9 +10,9 @@ from server.models.discount import Discount
 from server.extension import db
 from server.utils.firebase_auth import firebase_auth_required
 from server.utils.role import role_required, ROLES
-from . import purchase_resource
+from . import purchase_bp
 
-api = Api(purchase_resource)
+api = Api(purchase_bp)
 
 PAYSTACK_SECRET_KEY = os.getenv("PAYSTACK_SECRET_KEY")
 PAYSTACK_BASE = "https://api.paystack.co"

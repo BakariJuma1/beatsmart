@@ -6,9 +6,9 @@ from server.models.beat import Beat
 from server.models.soundpack import SoundPack
 from server.extension import db
 from server.utils.firebase_auth import firebase_auth_required
-from . import purchase_resource_bp  
+from . import purchase_bp
 
-api = Api(purchase_resource_bp)
+api = Api(purchase_bp)
 
 class PurchaseHistoryResource(Resource):
     @firebase_auth_required

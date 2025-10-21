@@ -11,9 +11,9 @@ from server.models.contract_template import ContractTemplate
 from server.models.beat import Beat
 from server.extension import db
 from server.utils.contract_util import generate_contract_pdf
-from . import purchase_resource
+from . import purchase_bp
 
-api = Api(purchase_resource)
+api = Api(purchase_bp)
 
 PAYSTACK_SECRET_KEY = os.getenv("PAYSTACK_SECRET_KEY")
 

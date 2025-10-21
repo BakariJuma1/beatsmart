@@ -1,55 +1,10 @@
-import { Tag, Zap, Gift, Clock, Star, Loader } from "lucide-react";
-import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-
-
-const API_BASE_URL = "https://beatsmart.onrender.com";
+import { Tag, Clock } from "lucide-react";
 
 export const PromotionsSection = () => {
-  const [discounts, setDiscounts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    const fetchDiscounts = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); 
-        
-        const response = await fetch(`${API_BASE_URL}/api/discounts/active`, {
-          signal: controller.signal,
-          headers: {
-            'Content-Type': 'application/json',
-          }
-        });
-        
-        clearTimeout(timeoutId);
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch discounts: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        setDiscounts(data);
-      } catch (err) {
-        console.error('Error fetching discounts:', err);
-        setError(err.message);
-        setDiscounts(getFallbackDiscounts());
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDiscounts();
-  }, []);
-
-
-  const getFallbackDiscounts = () => [
+  // Use static promotions data - no API calls
+  const discounts = [
     {
-      id: 1,
       code: "WELCOME20",
       percentage: 20,
       name: "First Purchase Discount",
@@ -60,7 +15,6 @@ export const PromotionsSection = () => {
       used_count: 0
     },
     {
-      id: 2,
       code: "3FOR2", 
       percentage: 33.33,
       name: "Beat Bundle Deal",
@@ -71,7 +25,6 @@ export const PromotionsSection = () => {
       used_count: 0
     },
     {
-      id: 3,
       code: "PACKDEAL",
       percentage: 25,
       name: "Sound Pack Special", 
@@ -82,17 +35,6 @@ export const PromotionsSection = () => {
       used_count: 0
     }
   ];
-
-  if (loading) {
-    return (
-      <section className="py-16 bg-gradient-to-b from-black to-gray-900/50">
-        <div className="container mx-auto px-4 text-center">
-          <Loader className="w-8 h-8 text-red-600 animate-spin mx-auto" />
-          <p className="text-gray-400 mt-4">Loading promotions...</p>
-        </div>
-      </section>
-    );
-  }
 
   return (
     <section className="py-16 bg-gradient-to-b from-black to-gray-900/50">
@@ -112,7 +54,7 @@ export const PromotionsSection = () => {
         <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
           {discounts.map((discount, index) => (
             <motion.div
-              key={discount.id || discount.code}
+              key={discount.code}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
