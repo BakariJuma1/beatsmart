@@ -1,8 +1,8 @@
-import { motion } from "framer-motion";
 import { Tag, Zap, Gift, Clock, Star, Loader } from "lucide-react";
 import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 
-// Use your existing API base URL
+
 const API_BASE_URL = "https://beatsmart.onrender.com";
 
 export const PromotionsSection = () => {
@@ -14,15 +14,30 @@ export const PromotionsSection = () => {
     const fetchDiscounts = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`${API_BASE_URL}/discounts/active`);
+        setError(null);
         
-        if (!response.ok) throw new Error('Failed to fetch discounts');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); 
+        
+        const response = await fetch(`${API_BASE_URL}/api/discounts/active`, {
+          signal: controller.signal,
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch discounts: ${response.status}`);
+        }
         
         const data = await response.json();
         setDiscounts(data);
       } catch (err) {
-        setError(err.message);
         console.error('Error fetching discounts:', err);
+        setError(err.message);
+        setDiscounts(getFallbackDiscounts());
       } finally {
         setLoading(false);
       }
@@ -30,6 +45,43 @@ export const PromotionsSection = () => {
 
     fetchDiscounts();
   }, []);
+
+
+  const getFallbackDiscounts = () => [
+    {
+      id: 1,
+      code: "WELCOME20",
+      percentage: 20,
+      name: "First Purchase Discount",
+      description: "Get 20% off your first beat or sound pack",
+      applicable_to: "global",
+      valid_until: null,
+      max_uses: null,
+      used_count: 0
+    },
+    {
+      id: 2,
+      code: "3FOR2", 
+      percentage: 33.33,
+      name: "Beat Bundle Deal",
+      description: "Buy 2 beats, get 1 free of equal or lesser value",
+      applicable_to: "beat",
+      valid_until: null,
+      max_uses: null,
+      used_count: 0
+    },
+    {
+      id: 3,
+      code: "PACKDEAL",
+      percentage: 25,
+      name: "Sound Pack Special", 
+      description: "Get any 2 sound packs for $30 (save $10)",
+      applicable_to: "soundpack",
+      valid_until: null,
+      max_uses: null,
+      used_count: 0
+    }
+  ];
 
   if (loading) {
     return (
@@ -41,50 +93,6 @@ export const PromotionsSection = () => {
       </section>
     );
   }
-
-  if (error) {
-    return (
-      <section className="py-16 bg-gradient-to-b from-black to-gray-900/50">
-        <div className="container mx-auto px-4 text-center">
-          <p className="text-red-400">Error loading promotions: {error}</p>
-        </div>
-      </section>
-    );
-  }
-
-  // Fallback to static promotions if no discounts from API
-  const displayDiscounts = discounts.length > 0 ? discounts : [
-    {
-      code: "WELCOME20",
-      percentage: 20,
-      name: "First Purchase Discount",
-      description: "Get 20% off your first beat or sound pack",
-      applicable_to: "global",
-      valid_until: null,
-      max_uses: null,
-      used_count: 0
-    },
-    {
-      code: "3FOR2", 
-      percentage: 33.33,
-      name: "Beat Bundle Deal",
-      description: "Buy 2 beats, get 1 free of equal or lesser value",
-      applicable_to: "beat",
-      valid_until: null,
-      max_uses: null,
-      used_count: 0
-    },
-    {
-      code: "PACKDEAL",
-      percentage: 25,
-      name: "Sound Pack Special", 
-      description: "Get any 2 sound packs for $30 (save $10)",
-      applicable_to: "soundpack",
-      valid_until: null,
-      max_uses: null,
-      used_count: 0
-    }
-  ];
 
   return (
     <section className="py-16 bg-gradient-to-b from-black to-gray-900/50">
@@ -102,9 +110,9 @@ export const PromotionsSection = () => {
         </div>
 
         <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-          {displayDiscounts.map((discount, index) => (
+          {discounts.map((discount, index) => (
             <motion.div
-              key={discount.code}
+              key={discount.id || discount.code}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
