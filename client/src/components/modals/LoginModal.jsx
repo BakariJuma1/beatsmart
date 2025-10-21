@@ -2,8 +2,12 @@ import { motion } from "framer-motion";
 import { X, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export const LoginModal = ({ show, onClose, onLogin }) => {
+export const LoginModal = ({ show, onClose }) => {
   if (!show) return null;
+
+  const handleRedirectToLogin = () => {
+    window.location.href = '/login';
+  };
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
@@ -33,7 +37,7 @@ export const LoginModal = ({ show, onClose, onLogin }) => {
 
         <div className="space-y-3">
           <Button 
-            onClick={onLogin}
+            onClick={handleRedirectToLogin}
             className="w-full bg-red-600 hover:bg-red-700"
           >
             Sign In to Purchase

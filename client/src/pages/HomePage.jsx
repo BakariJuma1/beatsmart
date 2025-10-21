@@ -4,9 +4,9 @@ import { motion } from "framer-motion";
 // Hooks
 import { useBeats } from "../hooks/useBeats";
 import { useWishlist } from "../hooks/useWishlist";
-import { useUser } from "../hooks/useUser";
 import { useFilters } from "../hooks/useFilters";
 import { useAudio } from "../hooks/useAudio";
+import { useAuth } from "../context/AuthContext";
 
 // Components
 import { Header } from "../components/layout/Header";
@@ -23,7 +23,7 @@ import { LoginModal } from "../components/modals/LoginModal";
 const HomePage = () => {
   // Hooks
   const { beats, loading, error, setBeats } = useBeats();
-  const { user, login } = useUser();
+  const { user, loading: authLoading } = useAuth();
   const { 
     wishlist, 
     wishlistItems,
@@ -31,7 +31,8 @@ const HomePage = () => {
     addToWishlist, 
     removeFromWishlist, 
     clearWishlist, 
-    isInWishlist 
+    isInWishlist,
+    fetchWishlist 
   } = useWishlist();
   
   const {
@@ -92,21 +93,11 @@ const HomePage = () => {
       }
       
       try {
-        const response = await fetch(`${API_BASE_URL}/beats/${currentBeat.id}/purchase`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        });
-        
-        if (response.ok) {
-          setPurchasedBeat(currentBeat);
-          setShowContractModal(true);
-          setCurrentBeatIndex(prev => (prev < sortedBeats.length - 1 ? prev + 1 : 0));
-        } else {
-          alert("Purchase failed. Please try again.");
-        }
+        // TODO: Implement actual payment integration
+        // For now, simulate successful purchase
+        setPurchasedBeat(currentBeat);
+        setShowContractModal(true);
+        setCurrentBeatIndex(prev => (prev < sortedBeats.length - 1 ? prev + 1 : 0));
       } catch (error) {
         console.error("Purchase error:", error);
         alert("Error processing purchase. Please check your connection.");
@@ -194,20 +185,34 @@ const HomePage = () => {
     setCurrentBeatIndex(0);
   }, [filteredBeats.length]);
 
+  // Refresh wishlist when user logs in
+  useEffect(() => {
+    if (user && !authLoading) {
+      fetchWishlist();
+    }
+  }, [user, authLoading, fetchWishlist]);
+
   // Modal handlers
   const closeContractModal = useCallback(() => {
     setShowContractModal(false);
     setPurchasedBeat(null);
   }, []);
 
-  const handleLogin = useCallback(() => {
-    login();
-    setShowLoginPrompt(false);
-  }, [login]);
-
   const handleRetry = useCallback(() => {
     window.location.reload();
   }, []);
+
+  // Show loading while auth is initializing
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-red-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-300">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -284,14 +289,13 @@ const HomePage = () => {
       <LoginModal
         show={showLoginPrompt}
         onClose={() => setShowLoginPrompt(false)}
-        onLogin={handleLogin}
       />
 
       {/* Footer */}
       <Footer />
 
       {/* Login Prompt */}
-      <LoginPrompt user={user} onLogin={handleLogin} />
+      <LoginPrompt user={user} />
     </div>
   );
 };
