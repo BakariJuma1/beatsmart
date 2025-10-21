@@ -26,7 +26,7 @@ def allowed_file(filename, allowed_exts):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_exts
 
 
-def upload_to_cloudinary(file, folder="uploads"):
+def upload_to_cloudinary(file, folder="Beatsmart"):
    
     try:
         result = cloudinary.uploader.upload(
