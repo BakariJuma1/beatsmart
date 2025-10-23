@@ -64,20 +64,26 @@ class PaystackWebhookResource(Resource):
                 payment.status = "success"
                 db.session.add(payment)
 
+              
+                file_type = metadata.get("file_type")
+                current_app.logger.info(f"Processing purchase for file_type: {file_type}")
                 
+             
                 existing_sale = Sale.query.filter_by(
                     buyer_id=payment.user_id,
                     beat_id=payment.beat_id,
-                    soundpack_id=payment.soundpack_id
+                    file_type=file_type  
                 ).first()
 
                 if not existing_sale:
+                  
                     sale = Sale(
                         buyer_id=payment.user_id,
                         beat_id=payment.beat_id,
                         soundpack_id=payment.soundpack_id,
                         amount=payment.amount,
-                        discount_id=payment.discount_id
+                        discount_id=payment.discount_id,
+                        file_type=file_type  
                     )
                     db.session.add(sale)
                     db.session.flush()
@@ -89,9 +95,9 @@ class PaystackWebhookResource(Resource):
                             sale.producer_id = beat.producer_id  
 
                            
-                            file_type = metadata.get("file_type")
                             template = ContractTemplate.query.filter_by(
-                                beat_id=payment.beat_id, file_type=file_type
+                                beat_id=payment.beat_id, 
+                                file_type=file_type 
                             ).first()
 
                             if template:
@@ -105,7 +111,7 @@ class PaystackWebhookResource(Resource):
                                 contract = Contract(
                                     buyer_id=payment.user_id,
                                     beat_id=payment.beat_id,
-                                    file_type=file_type,
+                                    file_type=file_type,  
                                     contract_type=template.contract_type,
                                     terms=template.terms,
                                     price=payment.amount,
@@ -116,7 +122,7 @@ class PaystackWebhookResource(Resource):
                                 sale.contract = contract  
 
                 db.session.commit()
-                current_app.logger.info(f"✅ Payment {ref} processed successfully")
+                current_app.logger.info(f" Payment {ref} processed successfully for {file_type}")
                 return {"ok": True}, 200
 
             except Exception as e:
