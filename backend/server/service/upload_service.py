@@ -15,7 +15,7 @@ cloudinary.config(
     secure=True
 )
 
-# Allowed file types
+
 ALLOWED_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png"}
 ALLOWED_AUDIO_EXTENSIONS = {"mp3", "wav"}
 ALLOWED_ZIP_EXTENSIONS = {"zip"}

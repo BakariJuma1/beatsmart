@@ -41,7 +41,7 @@ class BeatListResource(Resource):
                 "preview_url": beat.preview_url,
                 "price": beat.price,
                 "producer": {
-                    "name": beat.producer.name  
+                    "name": beat.producer.name 
                 }
             }
             for beat in beats
@@ -70,33 +70,61 @@ class BeatListResource(Resource):
         trackout_file = request.files.get("trackout")
         preview_start = int(data.get("preview_start", 0))
 
+      
         if not mp3_file:
             return {"error": "MP3 file is required"}, 400
+        if not wav_file:
+            return {"error": "WAV file is required"}, 400
+        if not trackout_file:
+            return {"error": "Trackout files are required"}, 400
 
+        
+        mp3_price = data.get("mp3_price")
+        wav_price = data.get("wav_price")
+        trackout_price = data.get("trackout_price")
+        exclusive_price = data.get("exclusive_price", 0)  
+        if not mp3_price or not wav_price or not trackout_price:
+            return {"error": "MP3, WAV, and Trackout prices are required"}, 400
+
+      
+        try:
+            mp3_price = float(mp3_price)
+            wav_price = float(wav_price)
+            trackout_price = float(trackout_price)
+            exclusive_price = float(exclusive_price) if exclusive_price else 0
+        except ValueError:
+            return {"error": "All prices must be valid numbers"}, 400
+
+        if mp3_price <= 0 or wav_price <= 0 or trackout_price <= 0:
+            return {"error": "MP3, WAV, and Trackout prices must be greater than 0"}, 400
+
+      
         cover_url = upload_cover_image(cover_file)["url"] if cover_file else None
         mp3_url = upload_beat_file(mp3_file)["url"]
-        wav_url = upload_beat_file(wav_file)["url"] if wav_file else None
-        trackout_url = upload_beat_file(trackout_file)["url"] if trackout_file else None
+        wav_url = upload_beat_file(wav_file)["url"]
+        trackout_url = upload_beat_file(trackout_file)["url"]
 
         preview_path = create_preview(mp3_file, start_time=preview_start)
         preview_url = upload_beat_file(open(preview_path, "rb"))["url"] if preview_path else None
 
-   
+       
         beat = Beat(
             **validated_data,
+            price=mp3_price,  
             cover_url=cover_url,
             preview_url=preview_url
         )
         db.session.add(beat)
         db.session.flush()
 
-        
-        db.session.add(BeatFile(file_type="mp3", file_url=mp3_url, price=beat.price, beat_id=beat.id))
-        if wav_url:
-            db.session.add(BeatFile(file_type="wav", file_url=wav_url, price=beat.price*1.2, beat_id=beat.id))
-        if trackout_url:
-            db.session.add(BeatFile(file_type="trackout", file_url=trackout_url, price=beat.price*1.5, beat_id=beat.id))
+       
+        db.session.add(BeatFile(file_type="mp3", file_url=mp3_url, price=mp3_price, beat_id=beat.id))
+        db.session.add(BeatFile(file_type="wav", file_url=wav_url, price=wav_price, beat_id=beat.id))
+        db.session.add(BeatFile(file_type="trackout", file_url=trackout_url, price=trackout_price, beat_id=beat.id))
+        #
+        db.session.add(BeatFile(file_type="exclusive", file_url=mp3_url, price=exclusive_price, beat_id=beat.id))
 
+      
         discount_code = data.get("discount_code")
         discount_percentage = data.get("discount_percentage")
         if discount_code and discount_percentage:
@@ -109,11 +137,16 @@ class BeatListResource(Resource):
             )
             db.session.add(discount)
 
-      
-        for file_type in ["mp3", "wav", "trackout"]:
+       
+        for file_type in ["mp3", "wav", "trackout", "exclusive"]:
             contract_type = data.get(f"{file_type}_contract_type")
             contract_terms = data.get(f"{file_type}_contract_terms")
             contract_price = float(data.get(f"{file_type}_contract_price", 0.0))
+            
+            if file_type == "exclusive" and not contract_type:
+                contract_type = "exclusive_rights_transfer"
+                contract_terms = "Full rights transfer: Producer surrenders all copyright and ownership rights to the buyer. Buyer obtains exclusive worldwide rights for commercial use."
+            
             if contract_type:
                 contract_template = ContractTemplate(
                     beat_id=beat.id,
@@ -141,9 +174,9 @@ class BeatResource(Resource):
             "preview_url": beat.preview_url,
             "price": beat.price,
             "producer": {
-                "name": beat.producer.name 
+                "name": beat.producer.name  
             }
-           
+          
         }
         return jsonify(safe_beat)
 
@@ -158,16 +191,43 @@ class BeatResource(Resource):
         data = request.form.to_dict()
         data["producer_id"] = user.id  
 
-     
         try:
             validated_data = beat_schema.load(data, partial=True)
         except ValidationError as err:
             return {"errors": err.messages}, 400
 
-       
+      
+        mp3_price = data.get("mp3_price")
+        wav_price = data.get("wav_price")
+        trackout_price = data.get("trackout_price")
+        exclusive_price = data.get("exclusive_price")
+
+        if mp3_price:
+            mp3_file_obj = BeatFile.query.filter_by(beat_id=beat.id, file_type="mp3").first()
+            if mp3_file_obj:
+                mp3_file_obj.price = float(mp3_price)
+                beat.price = float(mp3_price)  
+
+        if wav_price:
+            wav_file_obj = BeatFile.query.filter_by(beat_id=beat.id, file_type="wav").first()
+            if wav_file_obj:
+                wav_file_obj.price = float(wav_price)
+
+        if trackout_price:
+            trackout_file_obj = BeatFile.query.filter_by(beat_id=beat.id, file_type="trackout").first()
+            if trackout_file_obj:
+                trackout_file_obj.price = float(trackout_price)
+
+        if exclusive_price:
+            exclusive_file_obj = BeatFile.query.filter_by(beat_id=beat.id, file_type="exclusive").first()
+            if exclusive_file_obj:
+                exclusive_file_obj.price = float(exclusive_price)
+
+        
         for key, value in validated_data.items():
             setattr(beat, key, value)
 
+       
         cover_file = request.files.get("cover")
         mp3_file = request.files.get("mp3")
         wav_file = request.files.get("wav")
@@ -192,7 +252,9 @@ class BeatResource(Resource):
             if wav_obj:
                 wav_obj.file_url = wav_url
             else:
-                db.session.add(BeatFile(file_type="wav", file_url=wav_url, price=beat.price*1.2, beat_id=beat.id))
+                current_wav_price = BeatFile.query.filter_by(beat_id=beat.id, file_type="wav").first()
+                wav_price = current_wav_price.price if current_wav_price else beat.price * 1.2
+                db.session.add(BeatFile(file_type="wav", file_url=wav_url, price=wav_price, beat_id=beat.id))
 
         if trackout_file:
             trackout_url = upload_beat_file(trackout_file)["url"]
@@ -200,9 +262,11 @@ class BeatResource(Resource):
             if trackout_obj:
                 trackout_obj.file_url = trackout_url
             else:
-                db.session.add(BeatFile(file_type="trackout", file_url=trackout_url, price=beat.price*1.5, beat_id=beat.id))
+                current_trackout_price = BeatFile.query.filter_by(beat_id=beat.id, file_type="trackout").first()
+                trackout_price = current_trackout_price.price if current_trackout_price else beat.price * 1.5
+                db.session.add(BeatFile(file_type="trackout", file_url=trackout_url, price=trackout_price, beat_id=beat.id))
 
-     
+        
         discount_code = data.get("discount_code")
         discount_percentage = data.get("discount_percentage")
         if discount_code and discount_percentage:
@@ -221,7 +285,7 @@ class BeatResource(Resource):
                 db.session.add(discount)
 
        
-        for file_type in ["mp3", "wav", "trackout"]:
+        for file_type in ["mp3", "wav", "trackout", "exclusive"]:
             contract_type = data.get(f"{file_type}_contract_type")
             contract_terms = data.get(f"{file_type}_contract_terms")
             contract_price = float(data.get(f"{file_type}_contract_price", 0.0))
