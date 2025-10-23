@@ -25,7 +25,7 @@ class PaystackWebhookResource(Resource):
         computed = hmac.new(PAYSTACK_SECRET_KEY.encode(), body, hashlib.sha512).hexdigest()
 
         if not signature or signature != computed:
-            current_app.logger.warning("⚠️ Invalid Paystack signature")
+            current_app.logger.warning("invalid Paystack signature")
             return {"error": "Invalid signature"}, 400
 
      

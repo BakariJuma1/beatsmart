@@ -75,8 +75,7 @@ export const useDashboardData = () => {
   const fetchRecentPurchases = async () => {
     try {
       const token = await getToken();
-      // You'll need to implement this endpoint in your backend
-      const response = await axios.get(`${API_BASE_URL}/purchases/recent`, {
+      const response = await axios.get(`${API_BASE_URL}/api/purchases/history`, {
         headers: { 
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'

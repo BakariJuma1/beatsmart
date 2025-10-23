@@ -11,3 +11,4 @@ def register_routes(app):
     app.register_blueprint(discount_bp,url_prefix='/api/discounts')
     app.register_blueprint(purchase_bp,url_prefix='/api/purchases')
     
+    

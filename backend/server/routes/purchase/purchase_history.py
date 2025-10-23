@@ -46,6 +46,6 @@ class PurchaseHistoryResource(Resource):
             
             purchase_history.append(purchase_data)
         
-        return jsonify(purchase_history)
+        return purchase_history,200
 
 api.add_resource(PurchaseHistoryResource, "/history")

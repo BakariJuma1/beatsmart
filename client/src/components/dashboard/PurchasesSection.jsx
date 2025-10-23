@@ -18,26 +18,39 @@ export const PurchasesSection = () => {
         const token = localStorage.getItem('token');
         
         if (!token) {
+          setError('No authentication token found');
           setLoading(false);
           return;
         }
 
-      
-        const response = await fetch(`${API_BASE_URL}/purchases/history`, {
+        
+        const response = await fetch(`${API_BASE_URL}/api/purchases/history`, {
           headers: {
-            'Authorization': `Bearer ${token}`
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
           }
         });
 
         if (!response.ok) {
-          throw new Error('Failed to fetch purchases');
+          if (response.status === 401) {
+            throw new Error('Authentication failed. Please login again.');
+          } else if (response.status === 404) {
+            setPurchases([]);
+            return;
+          }
+          throw new Error(`Failed to fetch purchases: ${response.status}`);
         }
 
         const data = await response.json();
         setPurchases(data);
       } catch (err) {
-        setError(err.message);
         console.error('Error fetching purchases:', err);
+        setError(err.message);
+        
+        // If it's a network error, provide more specific message
+        if (err.name === 'TypeError' && err.message === 'Failed to fetch') {
+          setError('Network error: Unable to connect to server');
+        }
       } finally {
         setLoading(false);
       }
@@ -50,13 +63,18 @@ export const PurchasesSection = () => {
     try {
       const token = localStorage.getItem('token');
       
+      if (!token) {
+        alert('Please login to download files');
+        return;
+      }
+
       if (purchase.item_type === 'beat') {
-        // Use your existing beat file endpoint
         const response = await fetch(
-          `${API_BASE_URL}/beats/${purchase.item_id}/files/${purchase.file_type}`,
+          `${API_BASE_URL}/beats/${purchase.item_id}/files/${purchase.file_type || 'mp3'}`,
           {
             headers: {
-              'Authorization': `Bearer ${token}`
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
             }
           }
         );
@@ -65,17 +83,22 @@ export const PurchasesSection = () => {
           const data = await response.json();
           
           if (data.file_url) {
-            // Open the file URL in a new tab for download
-            window.open(data.file_url, '_blank');
+            const link = document.createElement('a');
+            link.href = data.file_url;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
           } else {
-            alert('Download URL not found');
+            alert('Download URL not found in response');
           }
         } else {
-          const errorData = await response.json();
-          alert(errorData.error || 'Download failed. Please check your purchase.');
+          const errorText = await response.text();
+          console.error('Download failed:', errorText);
+          alert('Download failed. Please check your purchase.');
         }
       } else {
-        // Handle soundpack download
         alert('Sound pack download functionality coming soon!');
       }
     } catch (error) {
@@ -115,6 +138,15 @@ export const PurchasesSection = () => {
         animate={{ opacity: 1, y: 0 }}
         className="bg-gray-900 rounded-3xl border border-red-700/30 p-6"
       >
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 bg-green-600 rounded-xl flex items-center justify-center">
+            <Package className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-white">Recent Purchases</h2>
+            <p className="text-gray-400">Your latest acquisitions</p>
+          </div>
+        </div>
         <div className="text-center py-8">
           <p className="text-red-400 mb-4">Error loading purchases: {error}</p>
           <Button 
