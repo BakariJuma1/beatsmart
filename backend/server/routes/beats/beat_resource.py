@@ -41,8 +41,7 @@ class BeatListResource(Resource):
                 "preview_url": beat.preview_url,
                 "price": beat.price,
                 "producer": {
-                    "id": beat.producer.id,
-                    "name": beat.producer.name
+                    "name": beat.producer.name  
                 }
             }
             for beat in beats
@@ -142,20 +141,9 @@ class BeatResource(Resource):
             "preview_url": beat.preview_url,
             "price": beat.price,
             "producer": {
-                "id": beat.producer.id,
-                "name": beat.producer.name
-            },
-            "discount": {
-                "code": beat.discounts[0].code if beat.discounts else None,
-                "percentage": beat.discounts[0].percentage if beat.discounts else None
-            },
-            "contracts": [
-                {
-                    "file_type": c.file_type,
-                    "contract_type": c.contract_type,
-                    "price": c.price
-                } for c in beat.contract_templates
-            ]
+                "name": beat.producer.name 
+            }
+           
         }
         return jsonify(safe_beat)
 
