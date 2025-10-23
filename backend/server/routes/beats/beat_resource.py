@@ -47,6 +47,8 @@ class BeatListResource(Resource):
             for beat in beats
         ]
         return jsonify(safe_beats)
+    
+    
 
     @firebase_auth_required
     @role_required(ROLES["ADMIN"])
@@ -322,6 +324,35 @@ class BeatResource(Resource):
         db.session.delete(beat)
         db.session.commit()
         return {"message": "Beat deleted"}, 200
+    
+class BeatFileOptionsResource(Resource):
+    def get(self, beat_id):
+        """Get file type options and pricing for a specific beat"""
+        beat = Beat.query.get_or_404(beat_id)
+        
+        
+        beat_files = BeatFile.query.filter_by(beat_id=beat_id).all()
+        
+        file_options = []
+        for beat_file in beat_files:
+            
+            if beat_file.file_type == "exclusive" and beat.is_sold_exclusive:
+                continue  
+                
+            option = {
+                "file_type": beat_file.file_type,
+                "price": beat_file.price,
+                "available": True
+            }
+            file_options.append(option)
+        
+        return jsonify({
+            "beat_id": beat_id,
+            "file_options": file_options
+        })
+
+
+api.add_resource(BeatFileOptionsResource, "/beats/<int:beat_id>/file-options")    
 
 
 api.add_resource(BeatListResource, "/beats")
