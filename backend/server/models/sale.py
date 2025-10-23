@@ -14,6 +14,7 @@ class Sale(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     buyer = db.relationship("User", back_populates="sales")
+    file_type = db.Column(db.String(20), nullable=True) 
     beat = db.relationship("Beat", back_populates="sales", foreign_keys=[beat_id])
     soundpack = db.relationship("SoundPack", back_populates="sales", foreign_keys=[soundpack_id])
     contract = db.relationship("Contract", back_populates="sale", foreign_keys=[contract_id])
