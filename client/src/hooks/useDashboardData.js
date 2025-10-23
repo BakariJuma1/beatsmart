@@ -114,33 +114,36 @@ export const useDashboardData = () => {
     }
   };
 
-  const handlePurchase = async (beat) => {
-    try {
-      const token = await getToken();
-      const response = await axios.post(`${API_BASE_URL}/beats/${beat.beat_id || beat.id}/purchase`,
-        {
-          file_type: "mp3",
-          callback_url: `${window.location.origin}/purchase-success`
-        },
-        {
-          headers: { 
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
+const handlePurchase = async (beat, fileType) => {
+  try {
+    const token = await getToken();
+    const response = await axios.post(`${API_BASE_URL}/purchase`,
+      {
+        item_type: 'beat',
+        item_id: beat.beat_id || beat.id,
+        file_type: fileType, 
+        callback_url: `${window.location.origin}/purchase-success`
+      },
+      {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
-      );
-
-      if (response.data.payment_url) {
-        window.location.href = response.data.payment_url;
-      } else {
-        await fetchRecentPurchases();
-        setError(null);
       }
-    } catch (err) {
-      console.error('Error initiating purchase:', err);
-      setError('Failed to initiate purchase');
+    );
+
+    if (response.data.payment_url) {
+      window.location.href = response.data.payment_url;
+    } else {
+      throw new Error('No payment URL received');
     }
-  };
+  } catch (err) {
+    console.error('Error initiating purchase:', err);
+    setError('Failed to initiate purchase');
+    throw err; 
+  }
+};
+
 
   const handleDownload = async (purchase) => {
     try {
@@ -196,7 +199,6 @@ export const useDashboardData = () => {
     error,
     setError,
     removeFromWishlist,
-    handlePurchase,
     handleDownload,
     refetchData: () => {
       setLoading(true);

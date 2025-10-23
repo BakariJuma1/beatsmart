@@ -18,13 +18,16 @@ import { BeatSwipe } from "../components/home/beats/BeatSwipe";
 import { BeatPlayer } from "../components/home/beats/BeatPlayer";
 import { FeaturesSection } from "../components/home/features/FeaturesSection";
 import { WishlistPreview } from "../components/home/wishlist/WishlistPreview";
-import { ContractModal } from "../components/home/modals/ContractModal";
 import { LoginModal } from "../components/home/modals/LoginModal";
 
 // New Components
 import { NavigationCTAs } from "../components/home/navigation/NavigationCTAs";
 import { PricingBanner } from "../components/home/pricing/PricingBanner";
 import { PromotionsSection } from "../components/home/promotions/PromotionsSection";
+
+// Add imports
+import { FileTypeModal } from "../components/home/modals/FileTypeModal";
+import { API_BASE_URL } from "@/constants";
 
 const HomePage = () => {
   // Hooks
@@ -69,9 +72,12 @@ const HomePage = () => {
 
   // State
   const [currentBeatIndex, setCurrentBeatIndex] = useState(0);
-  const [showContractModal, setShowContractModal] = useState(false);
-  const [purchasedBeat, setPurchasedBeat] = useState(null);
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+  
+  // Add state
+  const [showFileTypeModal, setShowFileTypeModal] = useState(false);
+  const [selectedBeat, setSelectedBeat] = useState(null);
+  const [purchaseLoading, setPurchaseLoading] = useState(false);
 
   // Memoized values
   const currentBeat = sortedBeats[currentBeatIndex];
@@ -87,28 +93,23 @@ const HomePage = () => {
     }
   }, [playingBeat, audioElement]);
 
-  // Enhanced swipe handler
+  // Update swipe handler
   const handleSwipe = useCallback(
     async (direction) => {
       if (!sortedBeats.length || !currentBeat) return;
 
       if (direction === "right") {
-        // SWIPE RIGHT - PURCHASE BEAT
+        // SWIPE RIGHT - SHOW FILE TYPE SELECTION
         if (!user) {
           setShowLoginPrompt(true);
           return;
         }
 
-        try {
-          setPurchasedBeat(currentBeat);
-          setShowContractModal(true);
-          setCurrentBeatIndex((prev) =>
-            prev < sortedBeats.length - 1 ? prev + 1 : 0
-          );
-        } catch (error) {
-          console.error("Purchase error:", error);
-          alert("Error processing purchase. Please check your connection.");
-        }
+        setSelectedBeat(currentBeat);
+        setShowFileTypeModal(true);
+        setCurrentBeatIndex((prev) =>
+          prev < sortedBeats.length - 1 ? prev + 1 : 0
+        );
       } else {
         // SWIPE LEFT - ADD TO WISHLIST
         if (!user) {
@@ -126,6 +127,43 @@ const HomePage = () => {
     },
     [sortedBeats, currentBeatIndex, user, currentBeat, addToWishlist]
   );
+
+  // Handle file type selection
+  const handleFileTypeSelect = async (fileType) => {
+    setPurchaseLoading(true);
+    
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/purchase`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          item_type: 'beat',
+          item_id: selectedBeat.id,
+          file_type: fileType,
+          callback_url: `${window.location.origin}/purchase-success`
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.payment_url) {
+        // Redirect to Paystack
+        window.location.href = data.payment_url;
+      } else {
+        throw new Error(data.error || 'Purchase failed');
+      }
+    } catch (error) {
+      console.error('Purchase error:', error);
+      alert('Purchase failed. Please try again.');
+    } finally {
+      setPurchaseLoading(false);
+      setShowFileTypeModal(false);
+    }
+  };
 
   // Enhanced drag end handler
   const handleDragEnd = useCallback(
@@ -186,7 +224,7 @@ const HomePage = () => {
     [user, isInWishlist, addToWishlist, removeFromWishlist]
   );
 
-  // Keyboard navigation
+  
   useEffect(() => {
     const handleKeyPress = (e) => {
       if (e.key === "ArrowLeft") {
@@ -215,17 +253,11 @@ const HomePage = () => {
     }
   }, [user, authLoading, fetchWishlist]);
 
-  // Modal handlers
-  const closeContractModal = useCallback(() => {
-    setShowContractModal(false);
-    setPurchasedBeat(null);
-  }, []);
-
   const handleRetry = useCallback(() => {
     window.location.reload();
   }, []);
 
-  // Show loading while auth is initializing
+  
   if (authLoading) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center">
@@ -239,7 +271,7 @@ const HomePage = () => {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      {/* Header */}
+     
       <Header
         loading={loading}
         error={error}
@@ -247,10 +279,10 @@ const HomePage = () => {
         onRetry={handleRetry}
       />
 
-      {/* SECTION 1: BEATS FIRST - Immediate Action */}
+     
       <section className="py-8 bg-gradient-to-b from-red-900/10 to-black">
         <div className="container mx-auto px-4">
-          {/* Quick Intro */}
+        
           <div className="text-center mb-8">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
               Find Your <span className="text-red-500">Next Hit</span>
@@ -279,7 +311,7 @@ const HomePage = () => {
             beats={beats}
           />
 
-          {/* Beat Swipe Section */}
+          
           <div className="max-w-md mx-auto">
             <BeatSwipe
               sortedBeats={sortedBeats}
@@ -326,14 +358,18 @@ const HomePage = () => {
       />
 
       {/* Modals */}
-      <ContractModal
-        purchasedBeat={purchasedBeat}
-        onClose={closeContractModal}
-      />
-
       <LoginModal
         show={showLoginPrompt}
         onClose={() => setShowLoginPrompt(false)}
+      />
+
+      {/* Add to JSX */}
+      <FileTypeModal
+        show={showFileTypeModal}
+        onClose={() => setShowFileTypeModal(false)}
+        beat={selectedBeat}
+        onFileTypeSelect={handleFileTypeSelect}
+        isLoading={purchaseLoading}
       />
 
       {/* Footer */}

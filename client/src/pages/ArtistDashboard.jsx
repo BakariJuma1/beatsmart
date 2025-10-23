@@ -1,19 +1,19 @@
-import React from 'react';
-import { useAuth } from '../context/AuthContext';
-import { motion } from 'framer-motion';
+import React, { useState } from "react";
+import { useAuth } from "../context/AuthContext";
+import { motion } from "framer-motion";
 
-// Hooks
-import { useDashboardData } from '../hooks/useDashboardData';
-import { useAudioPlayer } from '../hooks/useAudioPlayer';
+import { FileTypeModal } from "../components/home/modals/FileTypeModal";
+import { API_BASE_URL } from "@/constants";
+import { useDashboardData } from "../hooks/useDashboardData";
+import { useAudioPlayer } from "../hooks/useAudioPlayer";
 
-// Components
-import { LoadingSpinner } from '../components/dashboard/LoadingSpinner';
-import { WelcomeSection } from '../components/dashboard/WelcomeSection';
-import { WishlistSection } from '../components/dashboard/WishlistSection';
-import { PurchasesSection } from '../components/dashboard/PurchasesSection';
-import { ProfileSummary } from '../components/dashboard/ProfileSummary';
-import { QuickActions } from '../components/dashboard/QuickActions';
-import { ErrorDisplay } from '../components/dashboard/ErrorDisplay';
+import { LoadingSpinner } from "../components/dashboard/LoadingSpinner";
+import { WelcomeSection } from "../components/dashboard/WelcomeSection";
+import { WishlistSection } from "../components/dashboard/WishlistSection";
+import { PurchasesSection } from "../components/dashboard/PurchasesSection";
+import { ProfileSummary } from "../components/dashboard/ProfileSummary";
+import { QuickActions } from "../components/dashboard/QuickActions";
+import { ErrorDisplay } from "../components/dashboard/ErrorDisplay";
 
 export default function ArtistDashboard() {
   const { user } = useAuth();
@@ -25,16 +25,56 @@ export default function ArtistDashboard() {
     error,
     setError,
     removeFromWishlist,
-    handlePurchase,
+   
     handleDownload,
-    refetchData
+    refetchData,
   } = useDashboardData();
 
-  const { playPreview, stopAudio, isPlaying, currentBeat } = useAudioPlayer();
+  const [showFileTypeModal, setShowFileTypeModal] = useState(false);
+  const [selectedBeat, setSelectedBeat] = useState(null);
+  const [purchaseLoading, setPurchaseLoading] = useState(false);
 
-  if (loading) {
-    return <LoadingSpinner />;
-  }
+  const { playPreview, stopAudio, isPlaying, currentBeat } = useAudioPlayer();
+l
+  const handlePurchaseInit = (beat) => {
+    setSelectedBeat(beat);
+    setShowFileTypeModal(true);
+  };
+  
+  const handleFileTypeSelect = async (fileType) => {
+    setPurchaseLoading(true);
+
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${API_BASE_URL}/purchase`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          item_type: "beat",
+          item_id: selectedBeat.id,
+          file_type: fileType,
+          callback_url: `${window.location.origin}/purchase-success`,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.payment_url) {
+        window.location.href = data.payment_url;
+      } else {
+        throw new Error(data.error || "Purchase failed");
+      }
+    } catch (error) {
+      console.error("Purchase error:", error);
+      alert("Purchase failed. Please try again.");
+    } finally {
+      setPurchaseLoading(false);
+      setShowFileTypeModal(false);
+    }
+  };
 
   const handlePlayPreview = (beat) => {
     playPreview(beat, setError);
@@ -45,11 +85,15 @@ export default function ArtistDashboard() {
     refetchData();
   };
 
+  if (loading) {
+    return <LoadingSpinner />;
+  }
+
   return (
     <div className="min-h-screen bg-black text-white pt-24 pb-12">
       <div className="container mx-auto px-4 max-w-7xl">
         <ErrorDisplay error={error} onDismiss={() => setError(null)} />
-        
+
         <WelcomeSection user={user} />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -58,7 +102,7 @@ export default function ArtistDashboard() {
             <WishlistSection
               wishlist={wishlist}
               onRemoveFromWishlist={removeFromWishlist}
-              onPurchase={handlePurchase}
+              onPurchase={handlePurchaseInit} 
               onPlayPreview={handlePlayPreview}
               isPlaying={isPlaying}
             />
@@ -69,19 +113,28 @@ export default function ArtistDashboard() {
             />
           </div>
 
-          {/* Sidebar - 1/3 width */}
+         
           <div className="space-y-8">
             <ProfileSummary user={user} stats={stats} />
             <QuickActions />
           </div>
         </div>
 
+        {/* File Type Modal */}
+        <FileTypeModal
+          show={showFileTypeModal}
+          onClose={() => setShowFileTypeModal(false)}
+          beat={selectedBeat}
+          onFileTypeSelect={handleFileTypeSelect}
+          isLoading={purchaseLoading}
+        />
+
         {/* Audio Player (if you want to add a global player) */}
         {currentBeat && (
           <div className="fixed bottom-4 left-4 bg-gray-900 border border-red-700 rounded-xl p-4">
             <p className="text-sm text-gray-400">Now Playing</p>
             <p className="text-white font-semibold">{currentBeat.title}</p>
-            <button 
+            <button
               onClick={stopAudio}
               className="text-red-400 hover:text-white text-sm mt-2"
             >
