@@ -5,7 +5,6 @@ ROLES = {
     "ADMIN": "producer",
     "BUYER": "artist"
 }
-
 def role_required(*roles):
     def decorator(f):
         @wraps(f)
@@ -14,6 +13,9 @@ def role_required(*roles):
             
             if not user:
                 return {"error": "User not authenticated"}, 401
+
+            print(" USER ROLE DEBUG:", getattr(user, "role", None))
+            print(" ALLOWED ROLES:", roles)
 
             if user.role not in roles:
                 return {
