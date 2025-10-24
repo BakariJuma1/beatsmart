@@ -21,7 +21,7 @@ def firebase_auth_required(f):
         auth_header = request.headers.get("Authorization")
         
         if not auth_header or not auth_header.startswith("Bearer "):
-            return jsonify({"error": "Missing or invalid authorization header"}), 401
+            return {"error": "Missing or invalid authorization header"}, 401
 
         id_token = auth_header.split("Bearer ")[1]
 

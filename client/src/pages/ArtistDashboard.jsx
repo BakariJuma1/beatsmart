@@ -35,7 +35,7 @@ export default function ArtistDashboard() {
   const [purchaseLoading, setPurchaseLoading] = useState(false);
 
   const { playPreview, stopAudio, isPlaying, currentBeat } = useAudioPlayer();
-l
+
   const handlePurchaseInit = (beat) => {
     setSelectedBeat(beat);
     setShowFileTypeModal(true);
