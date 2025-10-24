@@ -46,6 +46,6 @@ def firebase_auth_required(f):
 
         except Exception as e:
             print("Auth Error:", e)
-            return jsonify({"error": "Invalid or expired token"}), 401
+            return {"error": "Invalid or expired token"}, 401
 
     return decorated_function
