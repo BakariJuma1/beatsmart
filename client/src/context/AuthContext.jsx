@@ -19,10 +19,10 @@ export const AuthProvider = ({ children }) => {
   const [role, setRole] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Helper function to map Firebase errors to friendly messages
+  
   const getFriendlyMessage = (error) => {
-    console.log("Firebase error code:", error.code); // Debug log
-    
+    console.log("Firebase error code:", error.code); 
+
     switch (error.code) {
       case "auth/email-already-in-use":
         return "This email is already registered. Try logging in.";
@@ -77,7 +77,7 @@ export const AuthProvider = ({ children }) => {
         password
       );
       const firebaseUser = userCredential.user;
-    
+
       await updateProfile(firebaseUser, { displayName: fullName });
 
       await fetchUserData(firebaseUser);
@@ -148,9 +148,15 @@ export const AuthProvider = ({ children }) => {
       };
     } catch (error) {
       console.error("Password reset failed:", error);
-   
+
       throw new Error(getFriendlyMessage(error));
     }
+  };
+
+  
+  const getIdToken = async () => {
+    if (!auth.currentUser) throw new Error("No authenticated user");
+    return await auth.currentUser.getIdToken();
   };
 
   useEffect(() => {
@@ -178,6 +184,7 @@ export const AuthProvider = ({ children }) => {
         loginWithGoogle,
         logout,
         resetPassword,
+        getIdToken, 
       }}
     >
       {children}

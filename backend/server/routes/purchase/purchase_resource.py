@@ -44,7 +44,7 @@ def apply_discount_if_any(item_type, item_id, discount_code, base_price):
 
 class PurchaseResource(Resource):
     @firebase_auth_required
-    @role_required(ROLES["BUYER"]) 
+    @role_required("artist", "producer")
     def post(self):
         user = request.current_user
         data = request.get_json() or {}

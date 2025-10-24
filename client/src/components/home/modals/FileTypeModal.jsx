@@ -1,49 +1,74 @@
-import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Download, FileText, Music, Folder, Crown, X, ArrowLeft, Check, Loader2 } from 'lucide-react';
-import { API_BASE_URL } from '@/constants';
+import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import {
+  Download,
+  FileText,
+  Music,
+  Folder,
+  Crown,
+  X,
+  ArrowLeft,
+  Check,
+  Loader2,
+} from "lucide-react";
+import { API_BASE_URL } from "@/constants";
+import { useAuth } from "@/context/AuthContext";
 
-// Constants and configuration
 const FILE_TYPE_CONFIGS = {
   mp3: {
     icon: Music,
-    title: 'MP3 License',
-    description: 'Basic license for one project',
-    features: ['MP3 File', 'Non-exclusive', 'Credit required', 'Basic License'],
-    color: 'text-blue-400',
-    bgColor: 'bg-blue-500/10'
+    title: "MP3 License",
+    description: "Basic license for one project",
+    features: ["MP3 File", "Non-exclusive", "Credit required", "Basic License"],
+    color: "text-blue-400",
+    bgColor: "bg-blue-500/10",
   },
   wav: {
     icon: Download,
-    title: 'WAV License', 
-    description: 'High quality WAV file',
-    features: ['WAV File', 'Better quality', 'Commercial use', 'Premium License'],
-    color: 'text-green-400',
-    bgColor: 'bg-green-500/10'
+    title: "WAV License",
+    description: "High quality WAV file",
+    features: [
+      "WAV File",
+      "Better quality",
+      "Commercial use",
+      "Premium License",
+    ],
+    color: "text-green-400",
+    bgColor: "bg-green-500/10",
   },
   trackout: {
     icon: Folder,
-    title: 'Trackout Stems',
-    description: 'Professional stems for mixing',
-    features: ['All Stems', 'WAV Format', 'Mixing ready', 'Professional License'],
-    color: 'text-purple-400',
-    bgColor: 'bg-purple-500/10'
+    title: "Trackout Stems",
+    description: "Professional stems for mixing",
+    features: [
+      "All Stems",
+      "WAV Format",
+      "Mixing ready",
+      "Professional License",
+    ],
+    color: "text-purple-400",
+    bgColor: "bg-purple-500/10",
   },
   exclusive: {
     icon: Crown,
-    title: 'Exclusive Rights',
-    description: 'Full ownership transfer',
-    features: ['All Files', 'Exclusive Rights', 'Full Ownership', 'Rights Transfer'],
-    color: 'text-yellow-400',
-    bgColor: 'bg-yellow-500/10'
-  }
+    title: "Exclusive Rights",
+    description: "Full ownership transfer",
+    features: [
+      "All Files",
+      "Exclusive Rights",
+      "Full Ownership",
+      "Rights Transfer",
+    ],
+    color: "text-yellow-400",
+    bgColor: "bg-yellow-500/10",
+  },
 };
 
 const DEFAULT_FILE_OPTIONS = [
-  { file_type: 'mp3', price: 29, name: 'MP3 License' },
-  { file_type: 'wav', price: 39, name: 'WAV License' },
-  { file_type: 'trackout', price: 59, name: 'Trackout Stems' },
-  { file_type: 'exclusive', price: 129, name: 'Exclusive Rights' }
+  { file_type: "mp3", price: 29, name: "MP3 License" },
+  { file_type: "wav", price: 39, name: "WAV License" },
+  { file_type: "trackout", price: 59, name: "Trackout Stems" },
+  { file_type: "exclusive", price: 129, name: "Exclusive Rights" },
 ];
 
 // Custom hook for file options
@@ -51,6 +76,7 @@ const useFileOptions = (beat) => {
   const [fileOptions, setFileOptions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const { getIdToken, user } = useAuth();
 
   useEffect(() => {
     const fetchFileOptions = async () => {
@@ -60,16 +86,18 @@ const useFileOptions = (beat) => {
       setError(null);
 
       try {
-        const response = await fetch(`${API_BASE_URL}/beats/${beat.id}/file-options`);
-        
+        const response = await fetch(
+          `${API_BASE_URL}/beats/${beat.id}/file-options`
+        );
+
         if (!response.ok) {
           throw new Error(`Failed to fetch file options: ${response.status}`);
         }
 
         const data = await response.json();
-        setFileOptions(data.file_options || DEFAULT_FILE_OPTIONS);
+        setFileOptions(data.file_options || data || DEFAULT_FILE_OPTIONS); // ✅ safer fallback
       } catch (err) {
-        console.error('Error fetching file options:', err);
+        console.error("Error fetching file options:", err);
         setError(err.message);
         setFileOptions(DEFAULT_FILE_OPTIONS);
       } finally {
@@ -83,7 +111,7 @@ const useFileOptions = (beat) => {
   return { fileOptions, loading, error };
 };
 
-// Sub-components for better organization
+// Sub-components
 const ModalHeader = ({ showPayment, onBack, onClose, beat }) => (
   <div className="p-6 border-b border-gray-800 flex items-center justify-between">
     <div className="flex items-center gap-3">
@@ -101,10 +129,12 @@ const ModalHeader = ({ showPayment, onBack, onClose, beat }) => (
       </div>
       <div>
         <h3 className="text-xl font-bold text-white">
-          {showPayment ? 'Complete Payment' : 'Choose License Type'}
+          {showPayment ? "Complete Payment" : "Choose License Type"}
         </h3>
         <p className="text-gray-400 text-sm">
-          {showPayment ? 'Secure payment via Paystack' : `Select your license for ${beat.title}`}
+          {showPayment
+            ? "Secure payment via Paystack"
+            : `Select your license for ${beat.title}`}
         </p>
       </div>
     </div>
@@ -128,13 +158,13 @@ const FileOptionCard = ({ option, isSelected, onClick }) => {
       whileTap={{ scale: 0.98 }}
       className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
         isSelected
-          ? 'border-red-500 bg-red-500/10'
-          : 'border-gray-700 hover:border-gray-600'
+          ? "border-red-500 bg-red-500/10"
+          : "border-gray-700 hover:border-gray-600"
       }`}
       onClick={onClick}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onClick()}
+      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onClick()}
       aria-selected={isSelected}
     >
       <div className="flex items-start justify-between mb-3">
@@ -145,7 +175,7 @@ const FileOptionCard = ({ option, isSelected, onClick }) => {
           <div>
             <h4 className="font-semibold text-white">{config.title}</h4>
             <p className="text-green-400 font-bold text-lg">
-              {option.price === 0 ? 'Contact for Price' : `$${option.price}`}
+              {option.price === 0 ? "Contact for Price" : `$${option.price}`}
             </p>
           </div>
         </div>
@@ -155,9 +185,9 @@ const FileOptionCard = ({ option, isSelected, onClick }) => {
           </div>
         )}
       </div>
-      
+
       <p className="text-gray-400 text-sm mb-3">{config.description}</p>
-      
+
       <div className="grid grid-cols-2 gap-1">
         {config.features.map((feature, index) => (
           <div key={index} className="flex items-center text-xs text-gray-300">
@@ -171,7 +201,9 @@ const FileOptionCard = ({ option, isSelected, onClick }) => {
 };
 
 const PaymentView = ({ selectedOption, paymentLoading, beat }) => {
-  const config = selectedOption ? FILE_TYPE_CONFIGS[selectedOption.file_type] : null;
+  const config = selectedOption
+    ? FILE_TYPE_CONFIGS[selectedOption.file_type]
+    : null;
 
   if (!selectedOption || !config) return null;
 
@@ -206,14 +238,14 @@ const PaymentView = ({ selectedOption, paymentLoading, beat }) => {
   );
 };
 
-const ActionButtons = ({ 
-  showPayment, 
-  onCancel, 
-  onContinue, 
-  onBack, 
-  onPay, 
-  selectedType, 
-  paymentLoading 
+const ActionButtons = ({
+  showPayment,
+  onCancel,
+  onContinue,
+  onBack,
+  onPay,
+  selectedType,
+  paymentLoading,
 }) => {
   if (!showPayment) {
     return (
@@ -255,7 +287,7 @@ const ActionButtons = ({
             Processing...
           </>
         ) : (
-          'Pay Now'
+          "Pay Now"
         )}
       </button>
     </div>
@@ -263,20 +295,22 @@ const ActionButtons = ({
 };
 
 // Main component
-export const FileTypeModal = ({ 
-  beat, 
-  onFileTypeSelect, 
+export const FileTypeModal = ({
+  beat,
+  onFileTypeSelect,
   onClose,
-  isLoading = false 
+  isLoading = false,
 }) => {
   const [selectedType, setSelectedType] = useState(null);
   const [showPayment, setShowPayment] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
 
+  const { getIdToken, user } = useAuth(); // ✅ Added
+
   const { fileOptions, loading: optionsLoading } = useFileOptions(beat);
 
-  const selectedOption = useMemo(() => 
-    fileOptions.find(opt => opt.file_type === selectedType),
+  const selectedOption = useMemo(
+    () => fileOptions.find((opt) => opt.file_type === selectedType),
     [fileOptions, selectedType]
   );
 
@@ -297,54 +331,57 @@ export const FileTypeModal = ({
   }, []);
 
   const handleContinueToPayment = useCallback(() => {
+    if (!user) {
+      alert("Please log in to continue with payment."); // ✅ Prevents mock-token
+      return;
+    }
     if (!selectedType) return;
     setShowPayment(true);
-  }, [selectedType]);
+  }, [selectedType, user]);
 
   const initiatePayment = useCallback(async () => {
     if (!selectedType || !beat?.id) return;
-    
+
     setPaymentLoading(true);
-    
+
     try {
-      const token = localStorage.getItem('token');
+      const token = await getIdToken();
       if (!token) {
-        throw new Error('Authentication required. Please log in.');
+        throw new Error("Authentication required. Please log in.");
       }
 
       const response = await fetch(`${API_BASE_URL}/api/purchases`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          item_type: 'beat',
+          item_type: "beat",
           item_id: beat.id,
           file_type: selectedType,
-          callback_url: `${window.location.origin}/purchase-success`
-        })
+          callback_url: `${window.location.origin}/purchase-success`,
+        }),
       });
-      
+
       const data = await response.json();
-      
+
       if (!response.ok) {
-        throw new Error(data.error || 'Purchase failed');
+        throw new Error(data.error || "Purchase failed");
       }
 
       if (data.payment_url) {
         window.location.href = data.payment_url;
       } else {
-        throw new Error('No payment URL received');
+        throw new Error("No payment URL received");
       }
     } catch (error) {
-      console.error('Payment error:', error);
-      alert(error.message || 'Payment failed. Please try again.');
+      console.error("Payment error:", error);
+      alert(error.message || "Payment failed. Please try again.");
       setPaymentLoading(false);
     }
-  }, [selectedType, beat?.id]);
+  }, [selectedType, beat?.id, getIdToken]);
 
-  // Don't render if beat is null
   if (!beat) return null;
 
   return (
@@ -363,7 +400,7 @@ export const FileTypeModal = ({
           className="bg-gray-900 rounded-2xl border border-red-500/30 max-w-md w-full max-h-[90vh] overflow-hidden shadow-2xl"
           onClick={(e) => e.stopPropagation()}
         >
-          <ModalHeader 
+          <ModalHeader
             showPayment={showPayment}
             onBack={handleBackToSelection}
             onClose={handleCloseModal}
@@ -387,7 +424,7 @@ export const FileTypeModal = ({
                 ))}
               </div>
             ) : (
-              <PaymentView 
+              <PaymentView
                 selectedOption={selectedOption}
                 paymentLoading={paymentLoading}
                 beat={beat}
