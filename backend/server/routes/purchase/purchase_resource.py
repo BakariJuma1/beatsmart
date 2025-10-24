@@ -160,4 +160,4 @@ class PurchaseResource(Resource):
         return {"error": "Payment initialization failed", "detail": res_data}, 500
 
 
-api.add_resource(PurchaseResource, "/purchase")
+api.add_resource(PurchaseResource, "/")

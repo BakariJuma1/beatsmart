@@ -312,7 +312,7 @@ export const FileTypeModal = ({
         throw new Error('Authentication required. Please log in.');
       }
 
-      const response = await fetch(`${API_BASE_URL}/purchase`, {
+      const response = await fetch(`${API_BASE_URL}/api/purchases`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
