@@ -3,19 +3,21 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Package, Download, ShoppingCart, Loader } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/context/AuthContext';
 
 const API_BASE_URL = "https://beatsmart.onrender.com";
 
-export const PurchasesSection = () => {
+const PurchasesSection = () => {
   const [purchases, setPurchases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { getIdToken } = useAuth();
 
   useEffect(() => {
     const fetchPurchases = async () => {
       try {
         setLoading(true);
-        const token = localStorage.getItem('token');
+        const token = await getIdToken();
         
         if (!token) {
           setError('No authentication token found');
@@ -23,7 +25,6 @@ export const PurchasesSection = () => {
           return;
         }
 
-        
         const response = await fetch(`${API_BASE_URL}/api/purchases/history`, {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -57,11 +58,11 @@ export const PurchasesSection = () => {
     };
 
     fetchPurchases();
-  }, []);
+  }, [getIdToken]);
 
   const handleDownload = async (purchase) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = await getIdToken();
       
       if (!token) {
         alert('Please login to download files');
@@ -236,3 +237,5 @@ const PurchaseItem = ({ purchase, onDownload }) => (
     </div>
   </div>
 );
+
+export default PurchasesSection;
