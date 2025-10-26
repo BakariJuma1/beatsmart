@@ -10,7 +10,7 @@ from server.models.soundpack import SoundPack
 from server.models.discount import Discount
 from server.extension import db
 from server.utils.firebase_auth import firebase_auth_required
-from server.utils.role import role_required, ROLES
+from server.utils.role import role_required
 from . import purchase_bp
 
 api = Api(purchase_bp)
@@ -20,8 +20,12 @@ PAYSTACK_BASE = "https://api.paystack.co"
 CURRENCY_API = "https://api.exchangerate.host/convert"
 
 
+# -------------------------------
+# Utility Functions
+# -------------------------------
+
 def apply_discount_if_any(item_type, item_id, discount_code, base_price):
-    """Applies discount if valid"""
+    """Applies discount if valid."""
     discount = None
     if discount_code:
         discount = Discount.query.filter_by(code=discount_code).first()
@@ -33,28 +37,29 @@ def apply_discount_if_any(item_type, item_id, discount_code, base_price):
         if discount.applicable_to != "global" and discount.item_id != item_id:
             return None, None
 
-    if discount:
-        final_price = base_price * (1 - discount.percentage / 100.0)
-    else:
-        final_price = base_price
-
+    final_price = base_price * (1 - discount.percentage / 100.0) if discount else base_price
     return round(final_price, 2), discount
 
 
 def convert_usd_to_kes(amount_usd):
-    """Fetch live USD→KES conversion rate and return KES amount"""
+    """Fetch live USD→KES conversion rate and return KES amount (safe fallback included)."""
     try:
         response = requests.get(f"{CURRENCY_API}?from=USD&to=KES&amount={amount_usd}", timeout=10)
         data = response.json()
-        if data.get("success"):
-            return round(data["result"], 2)
-        else:
-            current_app.logger.warning("Currency API failed, using fallback rate 130")
-            return round(amount_usd * 130, 2) 
+        if data.get("success") and data.get("result"):
+            result = round(float(data["result"]), 2)
+            if result > 0:
+                return result
+        current_app.logger.warning("Currency API failed, using fallback rate 130")
+        return max(round(amount_usd * 130, 2), 1.00)
     except Exception as e:
         current_app.logger.error(f"Currency conversion error: {e}")
-        return round(amount_usd * 130, 2)
+        return max(round(amount_usd * 130, 2), 1.00)
 
+
+# -------------------------------
+# Resource: Purchase
+# -------------------------------
 
 class PurchaseResource(Resource):
     @firebase_auth_required
@@ -72,7 +77,9 @@ class PurchaseResource(Resource):
         if not item_type or not item_id or not file_type:
             return {"error": "item_type, item_id, and file_type are required"}, 400
 
-        
+        # -------------------------------
+        # Item lookup and base price
+        # -------------------------------
         if item_type == "beat":
             beat = Beat.query.get(item_id)
             if not beat:
@@ -85,7 +92,7 @@ class PurchaseResource(Resource):
             if file_type == "exclusive" and beat.is_sold_exclusive:
                 return {"error": "Exclusive rights already sold for this beat"}, 400
 
-            base_price = beat_file.price
+            base_price = float(beat_file.price)
             item = beat
 
         elif item_type == "soundpack":
@@ -96,14 +103,18 @@ class PurchaseResource(Resource):
         else:
             return {"error": "Invalid item type"}, 400
 
-       
+        # -------------------------------
+        # Apply discount and convert
+        # -------------------------------
         final_price_usd, discount_obj = apply_discount_if_any(item_type, item_id, discount_code, base_price)
         if final_price_usd is None:
             return {"error": "Discount invalid/not applicable"}, 400
 
         final_price_kes = convert_usd_to_kes(final_price_usd)
 
-        
+        # -------------------------------
+        # Save initial payment record
+        # -------------------------------
         payment = Payment(
             user_id=user.id,
             amount=final_price_usd,
@@ -111,7 +122,7 @@ class PurchaseResource(Resource):
             method="paystack",
             status="pending",
             beat_id=item_id if item_type == "beat" else None,
-            soundpack_id=item_id if item_type == "soundpack" else None
+            soundpack_id=item_id if item_type == "soundpack" else None,
         )
         if discount_obj:
             payment.discount_id = discount_obj.id
@@ -119,11 +130,23 @@ class PurchaseResource(Resource):
         db.session.add(payment)
         db.session.commit()
 
+        # -------------------------------
+        # Prepare Paystack payload
+        # -------------------------------
         reference = f"{item_type.upper()}_{file_type.upper()}_{payment.id}_{int(datetime.utcnow().timestamp())}"
+
+        # Convert KES to smallest unit (Paystack expects integer)
+        try:
+            amount_kes_cents = int(round(final_price_kes * 100))
+            if amount_kes_cents <= 0:
+                raise ValueError("Invalid amount: must be greater than 0")
+        except Exception as e:
+            current_app.logger.error(f"Invalid final_price_kes: {final_price_kes} ({e})")
+            return {"error": "Invalid final price for payment"}, 400
 
         payload = {
             "email": user.email,
-            "amount": int(final_price_kes * 100),  # paystack expects amount in Kobo/Cents
+            "amount": amount_kes_cents,
             "currency": "KES",
             "reference": reference,
             "callback_url": callback_url,
@@ -135,11 +158,14 @@ class PurchaseResource(Resource):
                 "payment_id": payment.id,
                 "price_usd": final_price_usd,
                 "price_kes": final_price_kes,
-            }
+            },
         }
 
         headers = {"Authorization": f"Bearer {PAYSTACK_SECRET_KEY}"}
 
+        # -------------------------------
+        # Initialize Paystack transaction
+        # -------------------------------
         try:
             res = requests.post(f"{PAYSTACK_BASE}/transaction/initialize", json=payload, headers=headers, timeout=15)
             res_data = res.json()
@@ -147,12 +173,16 @@ class PurchaseResource(Resource):
             current_app.logger.error("Paystack initialize error: %s", e)
             return {"error": "Payment initialization failed"}, 500
 
+        # -------------------------------
+        # Handle Paystack response
+        # -------------------------------
         if res_data.get("status") and res_data.get("data"):
             payment.transaction_ref = reference
             db.session.commit()
 
             current_app.logger.info(
-                f"Purchase initiated: {file_type} for {item_type} {item_id} at ${final_price_usd} USD ({final_price_kes} KES)"
+                f"Purchase initiated: {file_type} for {item_type} {item_id} "
+                f"at ${final_price_usd} USD ({final_price_kes} KES)"
             )
 
             return {
@@ -163,11 +193,12 @@ class PurchaseResource(Resource):
                 "file_type": file_type,
                 "amount_usd": final_price_usd,
                 "amount_kes": final_price_kes,
-                "currency": "KES"
+                "currency": "KES",
             }, 200
 
         current_app.logger.error("Paystack init failed: %s", res_data)
         return {"error": "Payment initialization failed", "detail": res_data}, 500
+
 
 
 api.add_resource(PurchaseResource, "")
