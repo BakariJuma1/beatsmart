@@ -19,7 +19,7 @@ class Payment(db.Model):
     paystack_ref = db.Column(db.String(100), nullable=True, unique=True) 
 
   
-    metadata = db.Column(db.JSON, nullable=True)
+    payment_metadata = db.Column(db.JSON, nullable=True)
 
     beat_id = db.Column(db.Integer, db.ForeignKey("beats.id"), nullable=True)
     soundpack_id = db.Column(db.Integer, db.ForeignKey("soundpacks.id"), nullable=True)
