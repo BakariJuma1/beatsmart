@@ -4,6 +4,11 @@ import firebase_admin
 from firebase_admin import auth
 from types import SimpleNamespace
 
+ROLES = {
+    "ADMIN": "producer",
+    "BUYER": "artist"
+}
+
 def firebase_auth_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
