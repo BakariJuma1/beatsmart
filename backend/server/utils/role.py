@@ -1,29 +1,38 @@
 from functools import wraps
-from flask import request
+from flask import request, jsonify
+import firebase_admin
+from firebase_admin import auth
+from types import SimpleNamespace
 
-ROLES = {
-    "ADMIN": "producer",
-    "BUYER": "artist"
-}
-def role_required(*roles):
-    def decorator(f):
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            user = getattr(request, "current_user", None)
+def firebase_auth_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        auth_header = request.headers.get("Authorization")
+        if not auth_header or not auth_header.startswith("Bearer "):
+            return jsonify({"error": "Authorization header missing"}), 401
+
+        token = auth_header.split("Bearer ")[1]
+        try:
+            decoded_token = auth.verify_id_token(token)
+            user_role = decoded_token.get("role", "buyer")
+
+           
+            if user_role == "buyer":
+                user_role = "artist"
+            elif user_role == "admin":
+                user_role = "producer"
+
             
-            if not user:
-                return {"error": "User not authenticated"}, 401
+            request.current_user = SimpleNamespace(
+                id=decoded_token.get("uid"),
+                email=decoded_token.get("email"),
+                role=user_role
+            )
 
-            print(" USER ROLE DEBUG:", getattr(user, "role", None))
-            print(" ALLOWED ROLES:", roles)
+        except Exception as e:
+            print("Auth Error:", e)
+            return jsonify({"error": "Invalid or expired token"}), 401
 
-            if user.role not in roles:
-                return {
-                    "error": "Access denied",
-                    "your_role": user.role,
-                    "allowed_roles": roles
-                }, 403
+        return f(*args, **kwargs)
 
-            return f(*args, **kwargs)
-        return decorated_function
-    return decorator
+    return decorated_function
