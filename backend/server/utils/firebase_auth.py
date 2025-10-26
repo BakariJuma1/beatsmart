@@ -8,8 +8,7 @@ import datetime
 
 def create_session_cookie(id_token, expires_in=60 * 60 * 24 * 5): 
     try:
-        session_cookie = auth.create_session_cookie(id_token, expires_in=expires_in)
-        return session_cookie
+        return auth.create_session_cookie(id_token, expires_in=expires_in)
     except Exception as e:
         print("Error creating session cookie:", e)
         return None
@@ -31,17 +30,37 @@ def firebase_auth_required(f):
             email = decoded_token.get("email")
             name = decoded_token.get("name", "Unnamed User")
 
+            
+            firebase_role = decoded_token.get("role", "buyer").lower()
+
+          
+            if firebase_role == "buyer":
+                normalized_role = "artist"
+            elif firebase_role == "admin":
+                normalized_role = "producer"
+            else:
+                normalized_role = firebase_role  
+
+           
             user = User.query.filter_by(email=email).first()
             if not user:
                 user = User(
                     name=name,
                     email=email,
-                    role="buyer"  
+                    role=normalized_role
                 )
                 db.session.add(user)
                 db.session.commit()
+            else:
+               
+                if user.role != normalized_role:
+                    user.role = normalized_role
+                    db.session.commit()
 
+          
             request.current_user = user
+
+            print(f"Authenticated: {user.email} | Role: {user.role}")
             return f(*args, **kwargs)
 
         except Exception as e:
